@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.funi.platform.edg.dao.UploadFieldExcelDao">
+    <!--土地导入部分************************************************* -->
+    <!--插入失败原因-->
+    <insert id="insertErr" parameterType="java.util.HashMap">
+        INSERT INTO edg.EDG_FIELD_B_IMP
+        (fno_new,import_state,inputer_id)
+        VALUES
+        (#{fno_new},#{import_state},#{inputer_id})
+    </insert>
+
+    <select id="checkField" parameterType="com.funi.platform.edg.bo.Field" resultType="java.lang.Integer">
+        select count(1) from(
+        select * from edg.EDG_FIELD_B_IMP t where upper(t.fno_new) = upper(#{fno_new}) and t.inputer_id=#{inputer_id}
+        )temp
+    </select>
+
+    <!--插入数据-->
+    <insert id="insertFieldExc" parameterType="com.funi.platform.edg.bo.Field">
+        INSERT INTO edg.EDG_FIELD_B_IMP
+        (fid,data_source,fno_new,faddress,ftradetype,fowner,faprice_mu,fabprice,fbprice_mu,fbbprice,ftrprice_mu,ftrbprice,ftrtime,ffarea,fusage_type,fplanusg,fbtarea_up,fbtarea_down,fhouse_up,fhouse_down,fbusiness_up,fbusiness_down,fbself_up,fbself_down,fbuse_up,fbuse_down,frate_up,frate_dow,fctrno_new,ffileno,import_state,inputer_id)
+        VALUES
+        (#{fid},#{data_source},#{fno_new},#{faddress},#{ftradetype},#{fowner},#{faprice_mu},#{fabprice},#{fbprice_mu},#{fbbprice},#{ftrprice_mu},#{ftrbprice},to_date(#{ftrtime},'yyyy-mm-dd'),#{ffarea},#{fusage_type},#{fplanusg},#{fbtarea_up},#{fbtarea_down},#{fhouse_up},#{fhouse_down},#{fbusiness_up},#{fbusiness_down},#{fbself_up},#{fbself_down},#{fbuse_up},#{fbuse_down},#{frate_up},#{frate_dow},#{fctrno_new},#{ffileno},#{import_state},#{inputer_id})
+    </insert>
+    <!--建立关系-->
+    <insert id="insertFieldExc_E" parameterType="java.util.HashMap">
+        INSERT INTO edg.EDG_FIELD_B_EXTEND_IMP
+        (fid,data_source,fno_new,ffileno_new,fctrno_new)
+        VALUES
+        (#{fid},#{data_source},#{fno_new},#{ffileno},#{fctrno_new})
+    </insert>
+
+
+<!--查询导入临时表结果-->
+    <select id="queryFieldIMP" parameterType="java.util.HashMap" resultType="com.funi.platform.edg.bo.Field">
+        <![CDATA[
+            select * from (
+            select n.*,rownum num from (
+        ]]>
+
+        select
+        t.fno_new,
+        t.import_state
+        from edg.EDG_FIELD_B_IMP t
+        where t.inputer_id=#{uuid}
+        <![CDATA[
+            order by t.import_state desc
+			) n where rownum<=#{end}) where num>#{start}
+        ]]>
+    </select>
+    <select id="queryFieldIMPTotal" parameterType="java.util.HashMap" resultType="java.lang.Long">
+        select count(1) from(
+        select
+        t.fno_new,
+        t.import_state
+        from edg.EDG_FIELD_B_IMP t
+        where t.inputer_id=#{uuid}
+        )temp
+    </select>
+
+<!--清空导入临时表-->
+    <delete id="cleanField_E_IMP" parameterType="java.lang.String">
+        delete from
+        edg.edg_field_b_extend_imp  t
+        where t.fid in
+        (
+             select fid
+             from edg.edg_field_b_imp
+             where inputer_id=#{uuid}
+        )
+    </delete>
+    <delete id="cleanFieldIMP" parameterType="java.lang.String">
+        delete from edg.edg_field_b_imp t where inputer_id=#{uuid}
+    </delete>
+
+
+    <!--查询所有导入成功数据-->
+    <select id="queryFieldIMPAll" parameterType="java.lang.String" resultType="com.funi.platform.edg.bo.FieldVo">
+        select
+        t.fid,
+        t.data_source,
+        t.fno_new,
+        t.faddress,
+        t.ftradetype,
+        t.fowner,
+        t.faprice_mu,
+        t.fabprice,
+        t.fbprice_mu,
+        t.fbbprice,
+        t.ftrprice_mu,
+        t.ftrbprice,
+        to_char(t.ftrtime,'yyyy-mm-dd') as ftrtime,
+        t.ffarea,
+        t.fusage_type ,
+        t.fplanusg,
+        t.fbtarea_up  ,
+        t.fbtarea_down ,
+        t.fhouse_up ,
+        t.fhouse_down ,
+        t.fbusiness_up,
+        t.fbusiness_down,
+        t.fbself_up,
+        t.fbself_down ,
+        t.fbuse_up ,
+        t.fbuse_down,
+        t.frate_up ,
+        t.frate_dow,
+        t.fctrno_new,
+        t.ffileno ,
+        t.inputer_id
+        from edg.edg_field_b_imp t
+        where t.import_state='1' and t.inputer_id=#{uuid}
+    </select>
+    <!--查询所有导入成功数据的关系-->
+    <select id="queryFieldIMPAll_E" parameterType="java.lang.String" resultType="com.funi.platform.edg.bo.Field">
+        select p.fid,p.data_source,p.fno_new,p.ffileno_new,p.fctrno_new
+        from edg.EDG_FIELD_B_EXTEND_IMP p
+        inner join edg.edg_field_b_imp t on p.fid=t.fid
+        where t.import_state='1' and t.inputer_id=#{uuid}
+    </select>
+
+
+    <select id="checkNum" parameterType="java.lang.String" resultType="java.lang.Integer">
+        select count(1) from(
+        select * from edg.edg_field_b_imp t
+        where t.import_state='1' and t.inputer_id=#{uuid}
+        )temp
+    </select>
+    <!--插入数据到正式表-->
+    <insert id="insertField" parameterType="java.util.List">
+        INSERT INTO edg.edg_field_b
+        (fid,data_source,fno_new,faddress,ftradetype,fowner,faprice_mu,fabprice,fbprice_mu,fbbprice,ftrprice_mu,ftrbprice,ftrtime,ffarea,fusage_type,fplanusg,fbtarea_up,fbtarea_down,fhouse_up,fhouse_down,fbusiness_up,fbusiness_down,fbself_up,fbself_down,fbuse_up,fbuse_down,frate_up,frate_dow,fctrno_new,ffileno,inputer_id,create_time,update_time,delete_time,deleted)
+        <foreach collection="list" item="item" index="index" separator="union all" >
+            (select #{item.fid},#{item.data_source},#{item.fno_new},#{item.faddress},#{item.ftradetype},#{item.fowner},#{item.faprice_mu},#{item.fabprice},#{item.fbprice_mu},#{item.fbbprice},#{item.ftrprice_mu},#{item.ftrbprice},to_date(#{item.ftrtime},'yyyy-mm-dd'),#{item.ffarea},#{item.fusage_type},#{item.fplanusg},#{item.fbtarea_up},#{item.fbtarea_down},#{item.fhouse_up},#{item.fhouse_down},#{item.fbusiness_up},#{item.fbusiness_down},#{item.fbself_up},#{item.fbself_down},#{item.fbuse_up},#{item.fbuse_down},#{item.frate_up},#{item.frate_dow},#{item.fctrno_new},#{item.ffileno},#{item.inputer_id} from dual)
+        </foreach>
+    </insert>
+    <!--插入关系到正式关系表-->
+    <insert id="insertField_E" parameterType="java.util.List">
+        INSERT INTO edg.edg_field_b_extend
+        (fid,data_source,fno_new,ffileno_new,fctrno_new)
+        <foreach collection="list" item="item" index="index" separator="union all" >
+            (select #{item.fid},#{item.data_source},#{item.fno_new},#{item.ffileno_new},#{item.fctrno_new} from dual)
+        </foreach>
+    </insert>
+</mapper>

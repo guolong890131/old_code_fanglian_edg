@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.funi.platform.edg.dao.UploadLayoutExcelDao">
+
+    <!--插入失败原因-->
+    <insert id="insertErr" parameterType="java.util.HashMap">
+        INSERT INTO edg.edg_layout_b_imp
+        (uuid,layout_no,import_state,inputer_id)
+        VALUES
+        (edg.SEQ_EDG_LAYOUT_B_UUID.nextval,#{layout_no},#{import_state},#{inputer_id})
+    </insert>
+
+    <!--清空导入临时表-->
+    <delete id="cleanLayout_E_IMP" parameterType="java.lang.String">
+        delete from
+        edg.edg_layout_b_extend_imp  t
+        where t.XH in
+        (
+        select XH
+        from edg.edg_layout_b_imp
+        where inputer_id=#{uuid}
+        )
+    </delete>
+    <delete id="cleanLayoutIMP" parameterType="java.lang.String">
+        delete from edg.edg_layout_b_imp t where inputer_id=#{uuid}
+    </delete>
+
+
+    <select id="checkLayout" parameterType="com.funi.platform.edg.bo.Layout" resultType="java.lang.Integer">
+        select count(1) from(
+        select * from edg.edg_layout_b_imp t where upper(t.layout_no) = upper(#{layout_no}) and t.inputer_id=#{inputer_id}
+        )temp
+    </select>
+
+    <select id="checkLayout4Fctrno" parameterType="java.lang.String" resultType="java.lang.Integer">
+        select count(1) from(
+            SELECT DISTINCT e.fctrno_new
+            FROM edg.EDG_FIELD_B_EXTEND e
+            INNER JOIN edg.edg_field_b b on e.fid=b.fid
+            WHERE b.FILE_STATUS=1
+            and e.fctrno_new is not null
+            AND upper(e.fctrno_new) = upper(#{fctrno})
+        )temp
+    </select>
+
+    <select id="checkLayout4Ffileno" parameterType="java.lang.String" resultType="java.lang.Integer">
+        select count(1) from(
+            SELECT DISTINCT e.ffileno_new
+            FROM edg.EDG_FIELD_B_EXTEND e
+            INNER JOIN edg.edg_field_b b on e.fid=b.fid
+            WHERE b.FILE_STATUS=1
+            and e.ffileno_new is not null
+            AND upper(e.ffileno_new) = upper(#{ffileno})
+        )temp
+    </select>
+
+
+    <!--导入临时表-->
+    <insert id="insertLayoutExc" parameterType="com.funi.platform.edg.bo.Layout">
+        INSERT INTO edg.edg_layout_b_imp
+        (uuid,xh,region_code,construction_unit,construction_project_name,address,layout_no,print_date,construction_scale,c2,c3,c4,c5,c6,c7,c8,c9,fctrno,ffileno,import_state,inputer_id)
+        VALUES
+        (edg.SEQ_EDG_LAYOUT_B_UUID.nextval,#{xh},#{region_code},#{construction_unit},#{construction_project_name},#{address},#{layout_no},to_date(#{print_date},'yyyy-mm-dd'),#{construction_scale},#{c2},#{c3},#{c4},#{c5},#{c6},#{c7},#{c8},#{c9},#{fctrno},#{ffileno},#{import_state},#{inputer_id})
+    </insert>
+    <insert id="insertLayoutExc_E" parameterType="java.util.HashMap">
+        INSERT INTO edg.edg_layout_b_extend_imp
+        (uuid,xh,region_code,ffileno,fctrno,layout_no,print_date)
+        VALUES
+        (edg.SEQ_EDG_LAYOUT_B_EXTEND_UUID.nextval,#{xh},#{region_code},#{ffileno},#{fctrno},#{layout_no},to_date(#{print_date},'yyyy-mm-dd'))
+    </insert>
+
+
+    <!--查询导入临时表结果-->
+    <select id="queryLayoutIMP" parameterType="java.util.HashMap" resultType="com.funi.platform.edg.bo.Layout">
+        <![CDATA[
+            select * from (
+            select n.*,rownum num from (
+        ]]>
+        select
+        t.layout_no,
+        t.import_state
+        from edg.edg_layout_b_imp t
+        where t.inputer_id=#{uuid}
+        <![CDATA[
+            order by t.import_state desc
+			) n where rownum<=#{end}) where num>#{start}
+        ]]>
+    </select>
+    <select id="queryLayoutIMPTotal" parameterType="java.util.HashMap" resultType="java.lang.Long">
+        select count(1) from(
+        select
+        t.layout_no,
+        t.import_state
+        from edg.edg_layout_b_imp t
+        where t.inputer_id=#{uuid}
+        )temp
+    </select>
+
+
+    <!--查询所有导入成功数据-->
+    <select id="queryLayoutIMPAll" parameterType="java.lang.String" resultType="com.funi.platform.edg.bo.Layout">
+        select
+            t.uuid,
+            t.xh,
+            t.project_bh,
+            t.region_code,
+            t.ffileno,
+            t.fctrno,
+            t.construction_unit,
+            t.construction_project_name,
+            t.address,
+            t.layout_no,
+            to_char(t.print_date,'yyyy-mm-dd') as print_date,
+            t.construction_scale,
+            t.c1,
+            t.c2,
+            t.c3,
+            t.c4,
+            t.c5,
+            t.c6,
+            t.c7,
+            t.c8,
+            t.c9,
+            t.map_code,
+            t.inputer_id
+        from edg_layout_b_imp t
+        where t.import_state='1' and t.inputer_id=#{uuid}
+    </select>
+    <!--查询所有导入成功数据的关系-->
+    <select id="queryLayoutIMPAll_E" parameterType="java.lang.String" resultType="com.funi.platform.edg.bo.Layout">
+        select p.uuid,p.xh,p.region_code,p.ffileno,p.fctrno,p.layout_no,to_char(p.print_date,'yyyy-mm-dd') as print_date
+        from edg.edg_layout_b_extend_imp p
+        inner join edg.edg_layout_b_imp t on p.xh=t.xh
+        where t.import_state='1' and t.inputer_id=#{uuid}
+    </select>
+
+
+    <select id="checkNum" parameterType="java.lang.String" resultType="java.lang.Integer">
+        select count(1) from(
+        select * from edg.edg_layout_b_imp t where t.import_state='1' and t.inputer_id=#{uuid}
+        )temp
+    </select>
+    <!--插入数据到正式表-->
+    <insert id="insertLayout" parameterType="java.util.List">
+        INSERT INTO edg.edg_layout_b
+        (uuid,xh,region_code,construction_unit,construction_project_name,address,layout_no,print_date,construction_scale,c2,c3,c4,c5,c6,c7,c8,c9,fctrno,ffileno,inputer_id)
+        <foreach collection="list" item="item" index="index" separator="union all" >
+            (select #{item.uuid},#{item.xh},#{item.region_code},#{item.construction_unit},#{item.construction_project_name},#{item.address},#{item.layout_no},to_date(#{item.print_date},'yyyy-mm-dd'),#{item.construction_scale},#{item.c2},#{item.c3},#{item.c4},#{item.c5},#{item.c6},#{item.c7},#{item.c8},#{item.c9},#{item.fctrno},#{item.ffileno},#{item.inputer_id} from dual)
+        </foreach>
+    </insert>
+    <!--插入关系到正式关系表-->
+    <insert id="insertLayout_E" parameterType="java.util.List">
+        INSERT INTO edg.edg_layout_b_extend
+        (uuid,xh,region_code,ffileno,fctrno,print_date,layout_no)
+        <foreach collection="list" item="item" index="index" separator="union all" >
+            (select #{item.uuid},#{item.xh},#{item.region_code},#{item.ffileno},#{item.fctrno},to_date(#{item.print_date},'yyyy-mm-dd'),#{item.layout_no} from dual)
+        </foreach>
+    </insert>
+</mapper>

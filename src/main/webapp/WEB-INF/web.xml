@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<web-app xmlns="http://java.sun.com/xml/ns/javaee"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://java.sun.com/xml/ns/javaee
+		  http://java.sun.com/xml/ns/javaee/web-app_3_0.xsd"
+         version="3.0">
+    <welcome-file-list>
+        <welcome-file>index.jsp</welcome-file>
+    </welcome-file-list>
+
+    <context-param>
+        <param-name>contextConfigLocation</param-name>
+        <param-value>
+            classpath*:config/spring/*.xml
+        </param-value>
+    </context-param>
+
+    <!-- 前置控制器 -->
+    <servlet>
+        <servlet-name>dispatchServlet</servlet-name>
+        <servlet-class>com.funi.framework.mvc.DispatchServlet</servlet-class>
+        <load-on-startup>1</load-on-startup>
+    </servlet>
+
+    <servlet-mapping>
+        <servlet-name>dispatchServlet</servlet-name>
+        <url-pattern>/</url-pattern>
+    </servlet-mapping>
+    <!-- 加载Spring容器配置 -->
+    <listener>
+        <listener-class>org.springframework.web.context.ContextLoaderListener</listener-class>
+    </listener>
+
+    <listener>
+        <listener-class>org.springframework.web.context.request.RequestContextListener</listener-class>
+    </listener>
+    <!--强制请求编码 -->
+    <filter>
+        <filter-name>encodingFilter</filter-name>
+        <filter-class>org.springframework.web.filter.CharacterEncodingFilter</filter-class>
+        <init-param>
+            <param-name>encoding</param-name>
+            <param-value>UTF-8</param-value>
+        </init-param>
+        <init-param>
+            <param-name>forceEncoding</param-name>
+            <param-value>true</param-value>
+        </init-param>
+    </filter>
+    <filter-mapping>
+        <filter-name>encodingFilter</filter-name>
+        <url-pattern>/*</url-pattern>
+    </filter-mapping>
+
+    <!--防止xxs注入-->
+    <filter>
+        <filter-name>XssSqlFilter</filter-name>
+        <filter-class>com.funi.platform.edg.utils.XssFilter</filter-class>
+    </filter>
+    <filter-mapping>
+        <filter-name>XssSqlFilter</filter-name>
+        <url-pattern>/*</url-pattern>
+        <dispatcher>REQUEST</dispatcher>
+    </filter-mapping>
+
+
+    <!--Oracle数据库JNDI数据源引用 -->
+    <!--<resource-ref>-->
+        <!--<description>ASCPDriver</description>-->
+        <!--<res-ref-name>jdbc/ftgb</res-ref-name>-->
+        <!--<res-type>javax.sql.DataSource</res-type>-->
+        <!--<res-auth>Container</res-auth>-->
+    <!--</resource-ref>-->
+
+
+</web-app>

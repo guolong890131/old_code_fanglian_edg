@@ -1,0 +1,346 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.funi.platform.edg.dao.StockDao">
+
+
+    <!--<include refid="yearTemp"/>-->
+    <sql id="yearTemp">
+        <if test="yearTemp!=null and yearTemp!=''">
+            AND to_char(create_date,'yyyy') <![CDATA[ >= ]]> #{yearTemp}
+        </if>
+    </sql>
+
+    <resultMap id="StockListResultMap" type="com.funi.platform.edg.bo.StockList">
+        <result column="CREATE_DATE" property="create_date"/><!--统计日期-->
+        <result column="STOCK_CODE" property="stock_code"/><!--存量类型代码,001全周期库存总量,002土地可建面积,003规划可建面积,004施工可建面积,005楼市可销售面积,006房屋可使用面积-->
+        <result column="STOCK_NAME" property="stock_name"/><!--存量类型名称-->
+        <result column="STOCK_AREA" property="stock_area"/><!--面积(平米)-->
+    </resultMap>
+
+    <select id="findStockList" resultMap="StockListResultMap">
+        SELECT
+         create_date,
+         stock_code,
+         stock_name,
+         round(stock_area / 10000) AS stock_area
+        FROM EDG_STOCK
+    </select>
+
+
+    <resultMap id="StockLayerResultMap" type="com.funi.platform.edg.bo.StockLayer">
+        <result column="CREATE_DATE" property="create_date"/><!--统计日期-->
+        <result column="LAYER_CODE" property="layer_code"/><!--圈层代码,001主城区002二圈层003三圈层-->
+        <result column="LAYER_NAME" property="layer_name"/><!--圈层名称-->
+        <result column="STOCK_AREA" property="stock_area"/><!--可售面积(平米)-->
+        <result column="RATE" property="rate"/><!--环比-->
+    </resultMap>
+
+    <select id="findStockLayer" parameterType="com.funi.platform.edg.query.StockQuery" resultMap="StockLayerResultMap">
+        SELECT
+            create_date,
+            layer_code,
+            layer_name,
+            round(stock_area / 10000) AS stock_area,
+            round(rate*100,2) AS rate
+        FROM
+            edg_layer_stock
+        WHERE
+            stock_code = #{stock_code}
+    </select>
+
+    <resultMap id="StockStageUsageResultMap" type="com.funi.platform.edg.bo.StockStageUsage">
+        <result column="USAGE_CODE" property="usage_code"/><!--具体阶段或业态代码,住宅、非住宅、商业、办公、车位等代码-->
+        <result column="USAGE_NAME" property="usage_name"/><!--具体阶段或业态名称.住宅、非住宅、商业、办公、车位等名称-->
+        <result column="STOCK_AREA" property="stock_area"/><!--可售面积(平米)-->
+        <result column="RATE" property="rate"/><!--环比-->
+    </resultMap>
+    <select id="findStockStageUsage" parameterType="com.funi.platform.edg.query.StockQuery" resultMap="StockStageUsageResultMap">
+        SELECT
+        usage_code,
+        usage_name,
+        round(sum(stock_area) / 10000,2) AS stock_area,
+		decode(sum(stock_area_last),0,0,round((sum(stock_area)/sum(stock_area_last)-1)*100,2)) AS rate
+        FROM
+        edg_stage_usage_stock
+        WHERE
+        stock_code = #{stock_code}
+        and layer_code = #{layer_code}
+        and type_code = #{type_code}
+        GROUP BY  usage_code,usage_name
+
+    </select>
+
+    <!--楼市饼图点击查询列表-->
+    <resultMap id="RegionPieResultMap" type="com.funi.platform.edg.bo.StockStageUsagePie">
+        <result column="REGION_CODE" property="region_code"/><!--区域code-->
+        <result column="REGION_NAME" property="region_name"/><!--区域名称-->
+        <result column="STOCK_AREA" property="stock_area"/><!--可售面积(平米)-->
+    </resultMap>
+    <select id="findRegionPie" parameterType="com.funi.platform.edg.query.StockQuery" resultMap="RegionPieResultMap">
+      SELECT
+        region_code,
+        region_name,
+        round(sum(stock_area) / 10000,2) AS stock_area
+        FROM
+        edg_stage_usage_stock
+        WHERE
+        stock_code = #{stock_code}
+        and layer_code = #{layer_code}
+        and type_code = #{type_code}
+        <if test="usage_name!=null and usage_name!=''">
+            and usage_name = #{usage_name}
+        </if>
+        GROUP BY  region_code,region_name
+    </select>
+
+
+    <!--根据圈层查询区域-->
+    <resultMap id="StockRegion4ls" type="com.funi.platform.edg.bo.StockLsRegion">
+        <result column="code" property="code"/><!--区域code-->
+        <result column="name" property="name"/><!--区域name-->
+    </resultMap>
+    <select id="findRegion4ls" parameterType="com.funi.platform.edg.query.StockQuery" resultMap="StockRegion4ls">
+        SELECT
+            code,
+            name
+            from edg.edg_parameter_dict
+            where PARAMETER_TYPE=(
+                SELECT name
+                from edg.edg_parameter_dict
+                where PARAMETER_TYPE='圈层' and code=#{layer_code}
+            )
+    </select>
+
+
+    <resultMap id="StockTrendYResultMap" type="com.funi.platform.edg.bo.StockTrend">
+        <result column="CREATE_DATE" property="create_date"/><!--统计日期-->
+        <result column="Y" property="y"/><!--年-->
+        <result column="STOCK_AREA" property="stock_area"/><!--可售面积(平米)-->
+        <result column="WARNING_FLAG" property="warning_flag"/><!--预警-->
+    </resultMap>
+
+    <select id="findStockTrendY" parameterType="com.funi.platform.edg.query.StockQuery" resultMap="StockTrendYResultMap">
+        SELECT
+        create_date,
+        Y,
+        round(stock_area / 10000,2) AS stock_area,
+        round(warning_flag / 10000,2) AS warning_flag
+        FROM
+        edg_trend_stock_y
+        WHERE
+        stock_code = #{stock_code}
+        and layer_code = #{layer_code}
+        <include refid="yearTemp"/>
+        order by y
+    </select>
+<!--楼市区域图表数据-->
+    <select id="findStockTrendY4ls" parameterType="com.funi.platform.edg.query.StockQuery" resultMap="StockTrendYResultMap">
+        SELECT
+        create_date,
+        Y,
+        round(stock_area / 10000,2) AS stock_area,
+        round(warning_flag / 10000,2) AS warning_flag
+        FROM
+        edg_trend_stock_y_region
+        WHERE
+        stock_code = #{stock_code}
+        and layer_code = #{layer_code}
+        and region_code=#{region_code}
+        <include refid="yearTemp"/>
+        order by y
+    </select>
+
+    <resultMap id="findStockTrendYMResultMap" type="com.funi.platform.edg.bo.StockTrend">
+        <result column="CREATE_DATE" property="create_date"/><!--统计日期-->
+        <result column="YM" property="ym"/><!--年月-->
+        <result column="STOCK_AREA" property="stock_area"/><!--可售面积(平米)-->
+        <result column="WARNING_FLAG" property="warning_flag"/><!--预警-->
+    </resultMap>
+
+    <select id="findStockTrendYM" parameterType="com.funi.platform.edg.query.StockQuery" resultMap="findStockTrendYMResultMap">
+        SELECT
+        create_date,
+        ym,
+        round(stock_area / 10000,2) AS stock_area,
+        round(warning_flag / 10000,2) AS warning_flag
+        FROM
+        edg_trend_stock_m
+        WHERE
+        stock_code = #{stock_code}
+        and layer_code = #{layer_code}
+        <include refid="yearTemp"/>
+        order by ym
+    </select>
+<!--楼市区域图表数据-->
+    <select id="findStockTrendYM4ls" parameterType="com.funi.platform.edg.query.StockQuery" resultMap="findStockTrendYMResultMap">
+        SELECT
+        create_date,
+        ym,
+        round(stock_area / 10000,2) AS stock_area,
+        round(warning_flag / 10000,2) AS warning_flag
+        FROM
+        edg_trend_stock_m_region
+        WHERE
+        stock_code = #{stock_code}
+        and layer_code = #{layer_code}
+        and region_code=#{region_code}
+        <include refid="yearTemp"/>
+        order by ym
+    </select>
+
+
+    <resultMap id="FullCycleRegionStockResultMap" type="com.funi.platform.edg.bo.StockFullCycleRegion">
+        <result column="CREATE_DATE" property="create_date"/><!--统计日期-->
+        <result column="REGION_CODE" property="region_code"/><!--区域代码-->
+        <result column="REGION_NAME" property="region_name"/><!--区域名称-->
+        <result column="STOCK_AREA" property="stock_area"/><!--库存总量(平米)-->
+        <result column="FIELD_AREA" property="field_area"/><!--土地可建面积(平米)-->
+        <result column="LAYOUT_AREA" property="layout_area"/><!--规划可建面积(平米)-->
+        <result column="BUILD_AREA" property="build_area"/><!--施工可建面积(平米)-->
+        <result column="ESTATE_AREA" property="estate_area"/><!--楼市可销售面积(平米)-->
+    </resultMap>
+
+    <select id="findFullCycleRegionStock" parameterType="com.funi.platform.edg.query.StockQuery" resultMap="FullCycleRegionStockResultMap">
+        SELECT
+        create_date,
+        region_code,
+        region_name,
+        round(stock_area / 10000,2) AS stock_area,
+        round(field_area / 10000,2) AS field_area,
+        round(layout_area / 10000,2) AS layout_area,
+        round(build_area / 10000,2) AS build_area,
+        round(estate_area / 10000,2) AS estate_area
+        FROM
+        edg_full_cycle_region_stock
+        WHERE
+        layer_code = #{layer_code}
+    </select>
+
+    <resultMap id="FieldLayoutRegionStockResultMap" type="com.funi.platform.edg.bo.StockFieldLayoutRegion">
+        <result column="CREATE_DATE" property="create_date"/><!--统计日期-->
+        <result column="REGION_CODE" property="region_code"/><!--区域代码-->
+        <result column="REGION_NAME" property="region_name"/><!--区域名称-->
+        <result column="STOCK_AREA" property="stock_area"/><!--库存总量(平米)-->
+        <result column="RATE" property="rate"/><!--环比-->
+    </resultMap>
+
+    <select id="findFieldLayoutRegionStock" parameterType="com.funi.platform.edg.query.StockQuery" resultMap="FieldLayoutRegionStockResultMap">
+        SELECT
+        create_date,
+        region_code,
+        region_name,
+        round(stock_area / 10000,2) AS stock_area,
+        round(rate*100,2) as rate
+        FROM
+        edg_field_layout_region_stock
+        WHERE
+        stock_code = #{stock_code}
+        and layer_code = #{layer_code}
+    </select>
+
+    <resultMap id="EstateRegionStockResultMap" type="com.funi.platform.edg.bo.StockEstateRegion">
+        <result column="CREATE_DATE" property="create_date"/><!--统计日期-->
+        <result column="REGION_CODE" property="region_code"/><!--区域代码-->
+        <result column="REGION_NAME" property="region_name"/><!--区域名称-->
+        <result column="SUPPLY_AREA" property="supply_area"/><!--当月取得销售许可面积(平米)-->
+        <result column="SUPPLY_RATE" property="supply_rate"/><!--供应环比-->
+        <result column="SUPPLY_RATE_TB" property="supply_rate_tb"/><!--供应同比-->
+        <result column="DEAL_AREA" property="deal_area"/><!--当月成交面积-->
+        <result column="DEAL_RATE" property="deal_rate"/><!--成交环比-->
+        <result column="DEAL_RATE_TB" property="deal_rate_tb"/><!--成交同比-->
+        <result column="STOCK_AREA" property="stock_area"/><!--库存总量(平米)-->
+        <result column="STOCK_RATE" property="stock_rate"/><!--可售环比-->
+        <result column="STOCK_RATE_TB" property="stock_rate_tb"/><!--可售同比-->
+    </resultMap>
+
+    <select id="findEstateRegionStock" parameterType="com.funi.platform.edg.query.StockQuery" resultMap="EstateRegionStockResultMap">
+        SELECT
+        create_date,
+        region_code,
+        region_name,
+        round(supply_area / 10000,2) AS supply_area,
+        round(supply_rate*100,2) AS supply_rate,
+        round(supply_rate_tb*100,2) AS supply_rate_tb,
+        round(deal_area / 10000,2) AS deal_area,
+        round(deal_rate*100,2) AS deal_rate,
+        round(deal_rate_tb*100,2) AS deal_rate_tb,
+        round(stock_area / 10000,2) AS stock_area,
+        round(stock_rate*100,2) AS stock_rate,
+        round(stock_rate_tb*100,2) AS stock_rate_tb
+        FROM
+        edg_estate_region_stock
+        WHERE
+        layer_code = #{layer_code}
+    </select>
+
+
+    <resultMap id="EdgCanuseStockResultMap" type="com.funi.platform.edg.bo.StockCanuseArea">
+        <result column="REGION_CODE" property="region_code"/><!--区域代码-->
+        <result column="REGION_NAME" property="region_name"/><!--区域名称-->
+        <result column="USAGE_NAME" property="usage_name"/><!--类型名称-->
+        <result column="AREA_OR_RATE" property="area"/><!--值-->
+    </resultMap>
+
+    <select id="findEdgCanuseStock" parameterType="com.funi.platform.edg.query.StockQuery" resultMap="EdgCanuseStockResultMap">
+        SELECT
+        region_code,
+        region_name,
+        usage_name,
+        round(stock_area/10000,2) AS area
+        FROM edg_canuse_stock
+        WHERE layer_code = #{layer_code}
+        AND usage_code=#{usage_code}
+        ORDER BY region_code
+    </select>
+
+    <resultMap id="EdgCanuseStock2ResultMap" type="com.funi.platform.edg.bo.StockCanuseReta">
+        <result column="REGION_CODE" property="region_code"/><!--区域代码-->
+        <result column="REGION_NAME" property="region_name"/><!--区域名称-->
+        <result column="USAGE_NAME" property="usage_name"/><!--类型名称-->
+        <result column="AREA_OR_RATE" property="rate"/><!--值-->
+    </resultMap>
+    <select id="findEdgCanuseRate" parameterType="com.funi.platform.edg.query.StockQuery" resultMap="EdgCanuseStock2ResultMap">
+        SELECT
+        region_code,
+        region_name,
+        usage_name,
+        round(rate,2) AS rate
+        FROM edg_canuse_rate
+        WHERE layer_code = #{layer_code}
+        AND usage_code=#{usage_code}
+        ORDER BY region_code
+    </select>
+
+    <resultMap id="PompRegionResultMap" type="com.funi.platform.edg.bo.StockPompRegion">
+        <result column="PROJECT_NAME" property="project_name"/><!--项目名称-->
+        <result column="ALL_AREA" property="all_area"/><!--总库存-->
+        <result column="HOUSE_AREA" property="house_area"/><!--住宅可售-->
+        <result column="BUSINESS_AREA" property="business_area"/><!--商业可售-->
+        <result column="OFFICE_AREA" property="office_area"/><!--办公可售-->
+        <result column="STALL" property="stall"/><!--车位可售-->
+        <result column="XSZQ" property="xszq"/><!--住宅销售周期-->
+    </resultMap>
+    <select id="findPompRegion" parameterType="com.funi.platform.edg.query.StockQuery" resultMap="PompRegionResultMap">
+        <![CDATA[
+            select * from (
+            select n.*,rownum num from (
+        ]]>
+        select project_name AS project_name,
+               round(sum(stock_area)/10000,2) as all_area,
+               round(sum(decode(usage_code,'1001',stock_area,0))/10000,2) as house_area,
+               round(sum(decode(usage_code,'1002',stock_area,0))/10000,2) as business_area,
+               round(sum(decode(usage_code,'1003',stock_area,0))/10000,2) as office_area,
+               round(sum(decode(usage_code,'1004',stock_area,0))/10000,2) as stall,
+               round(decode(sum(decode(usage_code,'1001',deal_area,0)),0,0,sum(decode(usage_code,'1001',stock_area,0))/sum(decode(usage_code,'1001',deal_area,0))),2) as xszq
+        from edg_stock_project
+        where region_name= #{regionName}
+        and project_name not in ('999999')
+        group by project_name
+        order by sum(stock_area) desc
+        <![CDATA[
+			) n where rownum<=${num}) where num>0
+        ]]>
+    </select>
+</mapper>

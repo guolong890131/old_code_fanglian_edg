@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.funi.platform.edg.dao.UploadBuildExcelDao">
+    <!--施工导入部分************************************************* -->
+    <!--插入失败原因-->
+    <insert id="insertErr" parameterType="java.util.HashMap">
+        INSERT INTO edg.EDG_BUILD_B_IMP
+        (uuid,build_no,import_state,inputer_id)
+        VALUES
+        ((EDG.SEQ_EDG_BUILD_B_UUID.nextval),#{build_no},#{import_state},#{inputer_id})
+    </insert>
+
+    <select id="checkBuild" parameterType="com.funi.platform.edg.bo.Build" resultType="java.lang.Integer">
+        select count(1) from(
+        select * from edg.EDG_BUILD_B_IMP t where upper(t.build_no) = upper(#{build_no}) and  t.inputer_id=#{inputer_id}
+        )temp
+    </select>
+
+    <!--查询对应规划证号的数量-->
+    <select id="checkBuild4Layout_no" parameterType="java.lang.String" resultType="java.lang.Integer">
+        select count(1) from(
+        select DISTINCT a.layout_no as name
+        from edg.edg_layout_b_extend a
+        INNER JOIN edg.edg_layout_b b on a.xh = b.XH
+        where b.FILE_STATUS = 1
+        and a.layout_no is not null
+        AND upper(a.layout_no) = upper(#{layout_no})
+        )temp
+    </select>
+
+
+
+    <!--插入数据-->
+    <insert id="insertBuildExc" parameterType="com.funi.platform.edg.bo.Build">
+       INSERT INTO edg.EDG_BUILD_B_IMP
+        (uuid,xh,build_no,layout_no,build_name,construction_unit,build_unit,supervisor_unit,construction_scale,price,address,
+        print_date,build_date,compulete_date,data_source,region_code,import_state,inputer_id,s1,s2,s3,s4,s5)
+        VALUES
+        ((EDG.SEQ_EDG_BUILD_B_UUID.nextval),#{xh},#{build_no},#{layout_no},#{build_name},
+        #{construction_unit},#{build_unit},#{supervisor_unit},#{construction_scale},#{price},#{address},
+        to_date(#{print_date},'yyyy-mm-dd'),to_date(#{build_date},'yyyy-mm-dd'),to_date(#{compulete_date},'yyyy-mm-dd'),
+        #{data_source},#{data_source},#{import_state},#{inputer_id},#{s1},#{s2},#{s3},#{s4},#{s5})
+</insert>
+
+    <!--建立关系-->
+    <insert id="insertBuildExc_E" parameterType="java.util.HashMap">
+        INSERT INTO EDG.EDG_BUILD_B_EXTEND_IMP (UUID, XH, BUILD_NO, LAYOUT_NO, DATA_SOURCE)
+        VALUES
+        ((EDG.SEQ_EDG_BUILD_B_EXTEND_UUID.nextval),#{xh},#{build_no},#{layout_no},#{data_source})
+    </insert>
+
+    <!--查询导入临时表结果-->
+    <select id="queryBuildIMP" parameterType="java.util.HashMap" resultType="com.funi.platform.edg.bo.Build">
+        <![CDATA[
+            select * from (
+            select n.*,rownum num from (
+        ]]>
+
+        select
+        t.build_no,
+        t.import_state
+        from edg.EDG_Build_B_IMP t
+        where t.inputer_id=#{uuid}
+        <![CDATA[
+            order by t.import_state desc
+			) n where rownum<=#{end}) where num>#{start}
+        ]]>
+    </select>
+    <select id="queryBuildIMPTotal" parameterType="java.util.HashMap" resultType="java.lang.Long">
+        select count(1) from(
+        select
+        t.build_no,
+        t.import_state
+        from edg.EDG_Build_B_IMP t
+        where t.inputer_id=#{uuid}
+        )temp
+    </select>
+
+    <!--清空导入临时表-->
+    <delete id="cleanBuild_E_IMP" parameterType="java.lang.String">
+        delete from
+        edg.edg_build_b_extend_imp  t
+        where t.xh in
+        (
+        select i.xh
+        from edg.edg_build_b_imp i
+        where i.inputer_id=#{uuid}
+        )
+    </delete>
+    <delete id="cleanBuildIMP" parameterType="java.lang.String">
+        delete from edg.edg_build_b_imp t where t.inputer_id=#{uuid}
+    </delete>
+
+
+    <!--查询所有导入成功数据-->
+    <select id="queryBuildIMPAll" parameterType="java.lang.String" resultType="com.funi.platform.edg.bo.Build">
+        select
+        t.uuid,
+           t.xh,
+           t.data_source,
+           t.build_no,
+           t.layout_no,
+           t.build_name,
+           t.construction_unit,
+           t.build_unit,
+           t.supervisor_unit,
+           t.construction_scale,
+           t.price,
+           t.address,
+           to_char(t.print_date,'yyyy-mm-dd') as print_date,
+           to_char(t.build_date,'yyyy-mm-dd') as build_date,
+           to_char(t.compulete_date,'yyyy-mm-dd') as compulete_date,
+           t.data_source,
+           t.region_code,
+           t.inputer_id,
+            t.s1,
+            t.s2,
+            t.s3,
+            t.s4,
+            t.s5
+            from edg.edg_build_b_imp t
+        where t.import_state='1' and t.inputer_id=#{uuid}
+    </select>
+    <!--查询所有导入成功数据的关系-->
+    <select id="queryBuildIMPAll_E" parameterType="java.lang.String" resultType="com.funi.platform.edg.bo.Build">
+        select p.uuid,p.xh,p.data_source,p.build_no,p.layout_no
+        from edg.EDG_Build_B_EXTEND_IMP p
+        inner join edg.edg_build_b_imp t on p.xh=t.xh
+        where t.import_state='1' and t.inputer_id=#{uuid}
+    </select>
+
+    <!--插入数据到正式表-->
+    <insert id="insertBuild" parameterType="java.util.List">
+        INSERT INTO edg.edg_build_b
+        (uuid,xh,build_no,layout_no,build_name,construction_unit,build_unit,supervisor_unit,construction_scale,price,address,
+        print_date,build_date,compulete_date,data_source,region_code,inputer_id,s1,s2,s3,s4,s5)
+        <foreach collection="list" item="item" index="index" separator="union all" >
+            (select #{item.uuid},#{item.xh},#{item.build_no},#{item.layout_no},#{item.build_name},#{item.construction_unit},
+            #{item.build_unit},#{item.supervisor_unit},#{item.construction_scale},#{item.price},#{item.address},
+            to_date(#{item.print_date},'yyyy-mm-dd'),to_date(#{item.build_date},'yyyy-mm-dd'),to_date(#{item.compulete_date},'yyyy-mm-dd'),
+            #{item.data_source},#{item.region_code},#{item.inputer_id},#{item.s1},#{item.s2},#{item.s3},#{item.s4},#{item.s5} from dual)
+        </foreach>
+    </insert>
+    <!--插入关系到正式关系表-->
+    <insert id="insertBuild_E" parameterType="java.util.List">
+        INSERT INTO edg.edg_build_b_extend
+        (uuid,xh,data_source,build_no,layout_no)
+        <foreach collection="list" item="item" index="index" separator="union all" >
+            (select #{item.uuid},#{item.xh},#{item.data_source},#{item.build_no},#{item.layout_no} from dual)
+        </foreach>
+    </insert>
+
+    <select id="checkNum" parameterType="java.lang.String" resultType="java.lang.Integer">
+        select count(1) from(
+        select * from edg.edg_build_b_imp t where t.import_state='1' and t.inputer_id=#{uuid}
+        )temp
+    </select>
+
+
+</mapper>

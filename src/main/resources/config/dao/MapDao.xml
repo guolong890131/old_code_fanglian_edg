@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.funi.platform.edg.dao.MapDao">
+
+
+    <select id="findRegion" parameterType="java.lang.String" resultType="java.util.HashMap">
+        SELECT name,code FROM EDG_PARAMETER_DICT WHERE parameter_type=#{str} and IF_SHOW=1
+    </select>
+
+
+    <select id="findCoordinate" parameterType="java.util.HashMap" resultType="java.util.HashMap">
+       with pro as (
+            SELECT t.PROJECT_ID,t.PROJECT_NAME,sum(STOCK_AREA) as AREA FROM EDG_STOCK_PROJECT t WHERE t.stock_code='1005' GROUP BY t.PROJECT_ID,t.PROJECT_NAME
+        )
+        select
+        DECODE(L.project_code,NULL,DECODE(L.BUILD_NO,NULL,DECODE(L.LAYOUT_NO,NULL,EF.FIELD_NO,L.LAYOUT_NO),L.BUILD_NO),L.PROJECT_CODE) AS ID,
+        DECODE(L.project_code,NULL,DECODE(L.BUILD_NO,NULL,DECODE(L.LAYOUT_NO,NULL,'土地','规划'),'施工'),'项目') AS TYPE,
+        ROUND(DECODE(L.project_code,NULL,DECODE(L.BUILD_NO,NULL,DECODE(L.LAYOUT_NO,NULL,EF.NET_AREA_CENTIARE,T.CONSTRUCTION_SCALE),B.CONSTRUCTION_SCALE),p.AREA)/10000, 2) AS AREA,
+        j.PROJECT_NAME,
+        DECODE(L.project_code,NULL,EF.LNG,j.LNG) AS X,
+        DECODE(L.project_code,NULL,EF.LAT,j.LAT) AS Y
+        from edg_field EF
+        INNER JOIN edg_proj_field_lay_build_rel L ON EF.FIELD_NO=L.FIELD_NO
+        LEFT JOIN edg.edg_project j ON L.PROJECT_CODE = j.PROJECT_CODE
+        LEFT JOIN pro p ON L.PROJECT_CODE = p.PROJECT_ID
+        LEFT JOIN edg_build B ON B.BUILD_NO = L.BUILD_NO
+        LEFT JOIN edg_layout T ON T.LAYOUT_NO = L.LAYOUT_NO
+        WHERE
+        DECODE(L.project_code,NULL,DECODE(L.BUILD_NO,NULL,DECODE(L.LAYOUT_NO,NULL,'土地','规划'),'施工'),'项目')
+        IN
+        <foreach item="types" index="index" collection="types" open="(" separator="," close=")">
+            #{types}
+        </foreach>
+        <if test="code!=null and code!=''">
+            AND EF.REGION_CODE=#{code}
+        </if>
+
+    </select>
+
+    <select id="findWin" parameterType="java.util.HashMap" resultType="java.util.HashMap">
+
+        with pro as (
+            SELECT t.PROJECT_ID,t.PROJECT_NAME,sum(STOCK_AREA) as AREA FROM EDG_STOCK_PROJECT t WHERE t.stock_code='1005'
+        GROUP BY t.PROJECT_ID,t.PROJECT_NAME
+        )
+        select
+        DECODE(L.project_code,NULL,DECODE(L.BUILD_NO,NULL,DECODE(L.LAYOUT_NO,NULL,'土地','规划'),'施工'),'项目') AS TYPE,
+        DECODE(L.project_code,NULL,EF.FIELD_NO,j.PROJECT_NAME) AS PROJECT_NAME,
+        DECODE(L.project_code,NULL,EF.ADDRESS,L.ADDRESS) AS ADDRESS,
+        DECODE(L.project_code,NULL,EF.BINDING_ENTERPRISES_NAME,L.RAWDEVE) AS DEVELOPER,
+        ROUND(DECODE(L.project_code,NULL,DECODE(L.BUILD_NO,NULL,DECODE(L.LAYOUT_NO,NULL,EF.NET_AREA_CENTIARE,T.CONSTRUCTION_SCALE),B.CONSTRUCTION_SCALE),p.AREA)/10000, 2) AS STOCK_AREA,
+        DECODE(EF.DEAL_DATE,NULL,'',TO_CHAR(EF.DEAL_DATE,'yyyy-mm-dd')) AS DEAL_DATE,
+        DECODE(T.PRINT_DATE,NULL,'',TO_CHAR(T.PRINT_DATE,'yyyy-mm-dd')) AS PRINT_DATE,
+        DECODE(B.BUILD_DATE,NULL,'',TO_CHAR(B.BUILD_DATE,'yyyy-mm-dd')) AS BUILD_DATE,
+        DECODE(L.OPENSALEDATE,NULL,'',TO_CHAR(L.OPENSALEDATE,'yyyy-mm-dd')) AS PROJECT_DATE,
+        DECODE(L.project_code,NULL,EF.LNG,j.LNG) AS X,
+        DECODE(L.project_code,NULL,EF.LAT,j.LAT) AS Y
+        from edg_field EF
+        INNER JOIN edg_proj_field_lay_build_rel L ON EF.FIELD_NO=L.FIELD_NO
+        LEFT JOIN edg.edg_project j ON L.PROJECT_CODE = j.PROJECT_CODE
+        LEFT JOIN pro p ON L.PROJECT_CODE = p.PROJECT_ID
+        LEFT JOIN edg_build B ON B.BUILD_NO = L.BUILD_NO
+        LEFT JOIN edg_layout T ON T.LAYOUT_NO = L.LAYOUT_NO
+        WHERE
+        DECODE(L.project_code,NULL,DECODE(L.BUILD_NO,NULL,DECODE(L.LAYOUT_NO,NULL,'土地','规划'),'施工'),'项目')
+        = #{type}
+        <if test="type=='土地'">
+            AND EF.FIELD_NO = #{id}
+        </if>
+        <if test="type=='规划'">
+            AND T.LAYOUT_NO = #{id}
+        </if>
+        <if test="type=='施工'">
+            AND B.BUILD_NO = #{id}
+        </if>
+        <if test="type=='项目'">
+            AND p.PROJECT_ID = #{id}
+        </if>
+
+    </select>
+
+</mapper>

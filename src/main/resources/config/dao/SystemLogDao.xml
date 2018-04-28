@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.funi.platform.edg.dao.SystemLogDao">
+
+    <insert id="insertLog" parameterType="com.funi.platform.edg.bo.SystemLog">
+      INSERT INTO edg.edg_log
+        (id,operation,requestip,method,exceptioncode,exceptionDetail)
+        VALUES
+        (#{id},#{operation},#{requestip},#{method},#{exceptioncode},#{exceptionDetail})
+
+    </insert>
+
+
+
+    <sql id="Temp">
+        <where>
+            <if test="data_source!=null and data_source!=''">
+                AND u.region_code IN
+                <foreach item="item" index="index" collection="data_source" open="(" separator="," close=")">
+                    #{item}
+                </foreach>
+            </if>
+            <if test="role!=null and role!=''">
+                AND u.role_name = #{role}
+            </if>
+            <if test="name!=null and name!=''">
+                AND u.name like '%'||#{name}||'%'
+            </if>
+            <if test="startFtr!=null and startFtr!=''">
+                AND t.operationDate <![CDATA[ >= ]]>to_date(#{startFtr},'yyyy/mm/dd')
+            </if>
+            <if test="endFtr!=null and endFtr!=''">
+                AND t.operationDate <![CDATA[ <= ]]>to_date(#{endFtr},'yyyy/mm/dd')
+            </if>
+        </where>
+    </sql>
+
+
+    <select id="queryLog" parameterType="java.util.HashMap" resultType="com.funi.platform.edg.bo.SystemLog">
+        <![CDATA[
+            select * from (
+            select n.*,rownum num from (
+        ]]>
+
+        select
+        t.id,
+        t.operation,
+        t.requestip,
+        t.method,
+        t.exceptioncode,
+        t.exceptionDetail,
+        t.operationDate,
+        u.name,
+        u.region_name as region,
+        u.role_name as role
+        from edg_log t
+        inner join edg_user u on t.id=u.uuid
+        <include refid="Temp"/>
+        <![CDATA[
+            order by operationDate desc
+			) n where rownum<=#{end}) where num>#{start}
+        ]]>
+    </select>
+    <select id="queryTotal" parameterType="java.util.HashMap" resultType="java.lang.Long">
+        select count(1) from(
+        select
+        t.id,
+        t.operation,
+        t.requestip,
+        t.method,
+        t.exceptioncode,
+        t.exceptionDetail,
+        t.operationDate,
+        u.name,
+        u.region_name as region,
+        u.role_name as role
+        from edg_log t
+        inner join edg_user u on t.id=u.uuid
+        <include refid="Temp"/>
+        )temp
+    </select>
+
+
+</mapper>

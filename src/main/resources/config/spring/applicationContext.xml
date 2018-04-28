@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:mvc="http://www.springframework.org/schema/mvc" xmlns:aop="http://www.springframework.org/schema/aop"
+       xmlns:tx="http://www.springframework.org/schema/tx" xmlns:task="http://www.springframework.org/schema/task"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+       	http://www.springframework.org/schema/beans/spring-beans.xsd
+      		http://www.springframework.org/schema/context
+			http://www.springframework.org/schema/context/spring-context.xsd http://www.springframework.org/schema/mvc http://www.springframework.org/schema/mvc/spring-mvc.xsd http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop.xsd http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx.xsd http://www.springframework.org/schema/task http://www.springframework.org/schema/task/spring-task.xsd">
+
+
+    <!-- AOP自动注解功能 -->
+    <!--<aop:aspectj-autoproxy/>-->
+
+    <!--<context:component-scan base-package="com.funi.platform.**" use-default-filters="false">-->
+        <!--<context:include-filter expression="org.springframework.stereotype.Controller" type="annotation"/>-->
+    <!--</context:component-scan>-->
+
+
+    <!--<mvc:annotation-driven />-->
+    <!--&lt;!&ndash; 激活组件扫描功能,在包com.funi.platform.edg及其子包下面自动扫描通过注解配置的组件 &ndash;&gt;-->
+    <!--<context:component-scan base-package="com.funi.platform.edg" />-->
+    <!--扫描在mvc-core包里已经配置此处无需再配置-->
+
+
+    <!-- 注解方式配置事物 -->
+    <tx:annotation-driven transaction-manager="txManager" order="2"/>
+
+    <!-- 启动对@AspectJ注解的支持 -->
+    <!-- proxy-target-class等于true是强制使用cglib代理，proxy-target-class默认是false，如果你的类实现了接口 就走JDK代理，如果没有，走cglib代理  -->
+    <!-- 注：对于单利模式建议使用cglib代理，虽然JDK动态代理比cglib代理速度快，但性能不如cglib -->
+
+    <!--如果不写proxy-target-class="true"这句话也没问题-->
+    <aop:aspectj-autoproxy proxy-target-class="true"/>
+
+    <!--切面-->
+    <bean id="systemLogAspect" class="com.funi.platform.edg.annotation.SystemLogAspect"></bean>
+
+    <bean id="multipartResolver" class="org.springframework.web.multipart.commons.CommonsMultipartResolver">
+        <property name="defaultEncoding" value="UTF-8" />
+        <property name="maxUploadSize" value="10240000" />
+        <!-- 设置在文件上传时允许写到内存中的最大值，以字节为单位计算，默认是10240 -->
+        <!-- 但是经实验，上传文件大小若小于此参数，则不会生成临时文件，故改为2048 -->
+        <property name="maxInMemorySize" value="2048" />
+    </bean>
+
+    <!-- 异步任务线程池 -->
+    <task:annotation-driven executor="asyncExecutor" />
+    <task:executor id="asyncExecutor" pool-size="10-100" queue-capacity="10" keep-alive="5"/>
+</beans>

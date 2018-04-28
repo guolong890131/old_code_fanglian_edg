@@ -1,0 +1,217 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.funi.platform.edg.dao.FieldDao">
+
+
+    <sql id="fieldTemp">
+        <where>
+            <if test="data_source!=null and data_source!=''">
+                AND t.data_source IN
+                <foreach item="item" index="index" collection="data_source" open="(" separator="," close=")">
+                    #{item}
+                </foreach>
+            </if>
+            <if test="ftradetype!=null and ftradetype!=''">
+                AND t.ftradetype = #{ftradetype}
+            </if>
+            <!--<if test="startFtr!=null and startFtr!=''">-->
+                <!--AND t.ftrtime <![CDATA[ >= ]]>to_date(#{startFtr},'yyyy/mm/dd')-->
+            <!--</if>-->
+            <!--<if test="endFtr!=null and endFtr!=''">-->
+                <!--AND t.ftrtime <![CDATA[ <= ]]>to_date(#{endFtr},'yyyy/mm/dd')-->
+            <!--</if>-->
+
+            <if test="timeType=='create_time'">
+                AND  trunc(t.create_time) <![CDATA[ >= ]]>to_date(#{startFtr},'yyyy/mm/dd')
+            </if>
+            <if test="timeType=='create_time'">
+                AND  trunc(t.create_time) <![CDATA[ <= ]]>to_date(#{endFtr},'yyyy/mm/dd')
+            </if>
+
+            <if test="timeType=='ftrtime'">
+                AND   trunc(t.ftrtime) <![CDATA[ >= ]]>to_date(#{startFtr},'yyyy/mm/dd')
+            </if>
+            <if test="timeType=='ftrtime'">
+                AND  trunc(t.ftrtime)  <![CDATA[ <= ]]>to_date(#{endFtr},'yyyy/mm/dd')
+            </if>
+
+            <if test="ffileno!=null and ffileno!=''">
+                AND  to_single_byte(UPPER(t.ffileno)) LIKE  to_single_byte(UPPER (concat(concat('%',#{ffileno}),'%')))
+            </if>
+            <if test="fno_new!=null and fno_new!=''">
+                AND to_single_byte(UPPER (t.fno_new)) LIKE  to_single_byte(UPPER(concat(concat('%',#{fno_new}),'%')))
+            </if>
+            <if test="faddress!=null and faddress!=''">
+                AND to_single_byte(UPPER(t.faddress)) LIKE to_single_byte(UPPER(concat(concat('%',#{faddress}),'%')))
+            </if>
+            <if test="fowner!=null and fowner!=''">
+                AND to_single_byte(UPPER(t.fowner)) LIKE  to_single_byte(UPPER(concat(concat('%',#{fowner}),'%')))
+            </if>
+            <if test="fctrno_new!=null and fctrno_new!=''">
+                AND to_single_byte(UPPER(t.fctrno_new)) LIKE  to_single_byte(UPPER(concat(concat('%',#{fctrno_new}),'%')))
+            </if>
+            <if test="fplanusg!=null and fplanusg!=''">
+                AND to_single_byte(UPPER(t.fplanusg)) LIKE  to_single_byte(UPPER(concat(concat('%',#{fplanusg}),'%')))
+            </if>
+        </where>
+    </sql>
+
+    <select id="queryField" parameterType="java.util.HashMap" resultType="com.funi.platform.edg.bo.Field">
+        <![CDATA[
+            select * from (
+            select n.*,rownum num from (
+        ]]>
+
+        select
+            t.fid as id,
+            d.name as region,
+            t.data_source,
+            t.fno_new,
+            t.faddress,
+            t.ftradetype,
+            t.fowner,
+            t.faprice_mu,
+            t.fabprice,
+            t.fbprice_mu,
+            t.fbbprice,
+            t.ftrprice_mu,
+            t.ftrbprice,
+            to_char(t.ftrtime,'yyyy-mm-dd') as ftrtime,
+            t.ffarea,
+            t.fusage_type ,
+            t.fplanusg,
+            t.fbtarea_up  ,
+            t.fbtarea_down ,
+            t.fhouse_up ,
+            t.fhouse_down ,
+            t.fbusiness_up,
+            t.fbusiness_down,
+            t.fbself_up,
+            t.fbself_down ,
+            t.fbuse_up ,
+            t.fbuse_down,
+            t.frate_up ,
+            t.frate_dow,
+            t.fctrno_new,
+            t.ffileno ,
+        to_char(t.create_time,'yyyy-mm-dd') create_time,
+
+            decode(t.file_status,0,'未提交',1,'已提交','未提交') as file_status,
+            t.inputer_id
+            from edg.edg_field_b t
+            INNER JOIN (SELECT name,code FROM edg.EDG_PARAMETER_DICT where parameter_type='行政区域类' and IF_SHOW=1) d ON t.data_source=d.code
+            <include refid="fieldTemp"/>
+        <if test="timeType=='create_time'">
+            order by t.create_time desc
+        </if>
+        <if test="timeType=='ftrtime'">
+            order by t.ftrtime desc
+        </if>
+        <![CDATA[
+			) n where rownum<=#{end}) where num>#{start}
+        ]]>
+    </select>
+    <select id="queryTotal" parameterType="java.util.HashMap" resultType="java.lang.Long">
+        select count(1) from(
+          select * from edg.edg_field_b t
+          INNER JOIN (SELECT name,code FROM edg.EDG_PARAMETER_DICT where parameter_type='行政区域类' and IF_SHOW=1) d ON t.data_source=d.code
+          <include refid="fieldTemp"/>
+        )temp
+    </select>
+
+
+    <!--删除-->
+    <delete id="deleteFields" parameterType="java.util.HashMap">
+          DELETE FROM edg.edg_field_b
+          WHERE fid IN
+          <foreach item="item" index="index" collection="ids" open="(" separator="," close=")">
+            #{item}
+          </foreach>
+        AND file_status = 0
+    </delete>
+    <delete id="deleteField" parameterType="java.util.HashMap">
+        DELETE FROM edg.edg_field_b
+        WHERE fid = #{ids}
+        AND file_status = 0
+    </delete>
+
+    <!--提交-->
+    <update id="updateInputFields" parameterType="java.util.HashMap">
+        UPDATE edg.edg_field_b SET file_status = 1 WHERE fid IN
+        <foreach item="item" index="index" collection="ids" open="(" separator="," close=")">
+            #{item}
+        </foreach>
+    </update>
+    <update id="updateInputField" parameterType="java.util.HashMap">
+        UPDATE edg.edg_field_b SET file_status = 1 WHERE uuid = #{ids}
+    </update>
+
+
+    <!--新增-->
+    <insert id="insertField" parameterType="com.funi.platform.edg.bo.Field">
+        INSERT INTO edg.edg_field_b
+        (fid,data_source,fno_new,faddress,ftradetype,fowner,faprice_mu,fabprice,fbprice_mu,fbbprice,ftrprice_mu,ftrbprice,ftrtime,ffarea,fusage_type,fplanusg,fbtarea_up,fbtarea_down,fhouse_up,fhouse_down,fbusiness_up,fbusiness_down,fbself_up,fbself_down,fbuse_up,fbuse_down,frate_up,frate_dow,fctrno_new,ffileno,file_status,inputer_id)
+        VALUES
+        (#{id},#{data_source},#{fno_new},#{faddress},#{ftradetype},#{fowner},#{faprice_mu},#{fabprice},#{fbprice_mu},#{fbbprice},#{ftrprice_mu},#{ftrbprice},to_date(#{ftrtime},'yyyy-mm-dd'),#{ffarea},#{fusage_type},#{fplanusg},#{fbtarea_up},#{fbtarea_down},#{fhouse_up},#{fhouse_down},#{fbusiness_up},#{fbusiness_down},#{fbself_up},#{fbself_down},#{fbuse_up},#{fbuse_down},#{frate_up},#{frate_dow},#{fctrno_new},#{ffileno},#{file_status},#{inputer_id})
+    </insert>
+
+    <!--编辑-->
+    <update id="updateField" parameterType="com.funi.platform.edg.bo.Field">
+        UPDATE edg.edg_field_b
+        SET
+        data_source = #{data_source},
+        fno_new = #{fno_new},
+        faddress = #{faddress},
+        ftradetype = #{ftradetype},
+        fowner = #{fowner},
+        faprice_mu = #{faprice_mu},
+        fabprice = #{fabprice},
+        fbprice_mu = #{fbprice_mu},
+        fbbprice = #{fbbprice},
+        ftrprice_mu = #{ftrprice_mu},
+        ftrbprice = #{ftrbprice},
+        ftrtime = to_date(#{ftrtime},'yyyy-mm-dd'),
+        ffarea = #{ffarea},
+        fusage_type = #{fusage_type},
+        fplanusg = #{fplanusg},
+        fbtarea_up = #{fbtarea_up},
+        fbtarea_down = #{fbtarea_down},
+        fhouse_up = #{fhouse_up},
+        fhouse_down = #{fhouse_down},
+        fbusiness_up = #{fbusiness_up},
+        fbusiness_down = #{fbusiness_down},
+        fbself_up = #{fbself_up},
+        fbself_down = #{fbself_down},
+        fbuse_up = #{fbuse_up},
+        fbuse_down = #{fbuse_down},
+        frate_up = #{frate_up},
+        frate_dow = #{frate_dow},
+        fctrno_new = #{fctrno_new},
+        ffileno = #{ffileno},
+        file_status = #{file_status}
+        WHERE
+        fid = #{id}
+    </update>
+
+    <!--建立关系-->
+    <insert id="insertFieldExtend" parameterType="java.util.HashMap">
+        INSERT INTO edg.edg_field_b_extend
+        (fid,data_source,fno_new,ffileno_new,fctrno_new)
+        VALUES
+        (#{fid},#{data_source},#{fno_new},#{ffileno},#{fctrno_new})
+    </insert>
+    <!--删除关系-->
+    <delete id="deleteFieldExtend" parameterType="java.lang.String">
+        DELETE FROM edg.edg_field_b_extend
+        WHERE fid = #{id}
+    </delete>
+
+
+    <select id="checkField" parameterType="java.lang.String" resultType="java.lang.Integer">
+        select count(1) from(
+        select * from edg.edg_field_b t where upper(t.fno_new) = upper(#{fno_new})
+        )temp
+    </select>
+</mapper>

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.funi.platform.edg.dao.rowNumber.RowNumDao">
+<select id="query" parameterType="java.util.Map" resultType="com.funi.platform.edg.bo.RowNum">
+   SELECT TOP 1 H_number topNo,'10' intervalTime FROM QueueHist WHERE CONVERT(varchar(100), H_cometime, 112) = #{H_cometime} and H_char =#{H_initial} and H_hjtime is NOT null ORDER BY H_number DESC
+</select>
+
+
+</mapper>

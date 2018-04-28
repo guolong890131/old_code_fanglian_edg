@@ -1,0 +1,364 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.funi.platform.edg.dao.MarketDao">
+
+
+    <!--<include refid="yearTemp"/>-->
+
+    <sql id="yearTemp">
+        <if test="yearTemp!=null and yearTemp!=''">
+            AND to_char(create_date,'yyyy') <![CDATA[ >= ]]> #{yearTemp}
+        </if>
+    </sql>
+
+    <!-- 指定对应的mapper文件-->
+    <resultMap id="marketListResultMap" type="com.funi.platform.edg.bo.MarketList">
+        <result column="CREATE_DATE" property="create_date"/><!--统计日期-->
+        <result column="MARKET_CODE" property="market_code"/><!--市场概况统计类型代码-->
+        <result column="MARKET_NAME" property="market_name"/><!--市场概况统计类型名称-->
+        <result column="VALUE" property="value"/><!--面积或价格-->
+    </resultMap>
+
+    <select id="findMarketList" resultMap="marketListResultMap">
+        SELECT
+         create_date,
+         market_code,
+         market_name,
+         round(value) as value
+        FROM EDG_MARKET
+    </select>
+
+
+    <!--批准预售面积与成交面积趋势统计-->
+
+
+    <resultMap id="SupplyDealYResultMap" type="com.funi.platform.edg.bo.MarketSupplyDeal">
+        <result column="CREATE_DATE" property="create_date"/><!--统计日期-->
+        <result column="Y" property="y"/><!--年-->
+        <result column="SUPPLY_AREA" property="supply_area"/><!--批准预售面积(平米)-->
+        <result column="DEAL_AREA" property="deal_area"/><!--成交面积(平米)-->
+        <result column="RATE" property="rate"/><!--供销比-->
+    </resultMap>
+    <select id="findSupplyDealY" parameterType="com.funi.platform.edg.query.MarketQuery" resultMap="SupplyDealYResultMap">
+        SELECT
+            create_date,
+            y,
+            DECODE(supply_area, null, 0,round(supply_area / 10000,2)) AS supply_area,
+            DECODE(deal_area, null, 0, round(deal_area / 10000,2)) AS deal_area,
+            DECODE(rate, null, 0,round(rate,2)) AS rate
+        FROM
+            edg_mark_supply_deal_y
+        WHERE
+            layer_code = #{layer_code}
+        AND usage_code = #{usage_code}
+        <include refid="yearTemp"/>
+        order by y
+    </select>
+
+    <resultMap id="SupplyDealYMResultMap" type="com.funi.platform.edg.bo.MarketSupplyDeal">
+        <result column="CREATE_DATE" property="create_date"/><!--统计日期-->
+        <result column="YM" property="ym"/><!--年月-->
+        <result column="SUPPLY_AREA" property="supply_area"/><!--批准预售面积(平米)-->
+        <result column="DEAL_AREA" property="deal_area"/><!--成交面积(平米)-->
+        <result column="RATE" property="rate"/><!--供销比-->
+    </resultMap>
+    <select id="findSupplyDealYM" parameterType="com.funi.platform.edg.query.MarketQuery" resultMap="SupplyDealYMResultMap">
+        SELECT
+            create_date,
+            ym,
+            DECODE(supply_area, null, 0,round(supply_area / 10000,2)) AS supply_area,
+            DECODE(deal_area, null, 0, round(deal_area / 10000,2)) AS deal_area,
+            DECODE(rate, null, 0,round(rate,2)) AS rate
+        FROM
+            edg_mark_supply_deal_m
+        WHERE
+            layer_code = #{layer_code}
+        AND usage_code = #{usage_code}
+        <include refid="yearTemp"/>
+        order by ym
+    </select>
+
+
+    <!--可销售面积与销售周期(月)趋势统计-->
+
+
+    <resultMap id="StockCycleResultMap" type="com.funi.platform.edg.bo.MarketStockCycle">
+        <result column="CREATE_DATE" property="create_date"/><!--统计日期-->
+        <result column="YM" property="ym"/><!--年月-->
+        <result column="STOCK_AREA" property="stock_area"/><!--批准预售面积(平米)-->
+        <result column="RATE" property="rate"/><!--销售周期(月)-->
+    </resultMap>
+    <select id="findStockCycle" parameterType="com.funi.platform.edg.query.MarketQuery" resultMap="StockCycleResultMap">
+        SELECT
+        create_date,
+        ym,
+        DECODE(stock_area, NULL , 0, round(stock_area / 10000,2)) AS stock_area,
+        DECODE(rate, null, 0,round(rate,2)) AS rate
+        FROM
+        edg_mark_stock_cycle_m
+        WHERE
+        layer_code = #{layer_code}
+        AND usage_code = #{usage_code}
+        <include refid="yearTemp"/>
+         order by ym
+    </select>
+
+
+    <!--价格趋势统计-->
+
+    <resultMap id="SupplyPriceYResultMap" type="com.funi.platform.edg.bo.MarketSupplyDeal">
+        <result column="CREATE_DATE" property="create_date"/><!--统计日期-->
+        <result column="Y" property="y"/><!--年-->
+        <result column="AVERAGE_PRICE" property="average_price"/><!--均价-->
+        <result column="DEAL_AVERAGE_DECPRICE" property="deal_average_decprice"/><!--申报均价（成交）-->
+    </resultMap>
+    <select id="findSupplyPriceY" parameterType="com.funi.platform.edg.query.MarketQuery" resultMap="SupplyPriceYResultMap">
+        SELECT
+        create_date,
+        y,
+        DECODE(average_price, null, 0, round(average_price)) AS average_price,
+        DECODE(deal_average_decprice, NULL , 0, round(deal_average_decprice)) AS deal_average_decprice
+        FROM
+        edg_mark_supply_deal_y
+        WHERE
+        layer_code = #{layer_code}
+        AND usage_code = #{usage_code}
+        <include refid="yearTemp"/>
+        order by y
+    </select>
+
+    <resultMap id="SupplyPriceYMResultMap" type="com.funi.platform.edg.bo.MarketSupplyDeal">
+        <result column="CREATE_DATE" property="create_date"/><!--统计日期-->
+        <result column="YM" property="ym"/><!--年月-->
+        <result column="AVERAGE_PRICE" property="average_price"/><!--均价-->
+        <result column="DEAL_AVERAGE_DECPRICE" property="deal_average_decprice"/><!--申报均价（成交）-->
+    </resultMap>
+    <select id="findSupplyPriceYM" parameterType="com.funi.platform.edg.query.MarketQuery" resultMap="SupplyPriceYMResultMap">
+        SELECT
+        create_date,
+        ym,
+        DECODE(average_price, null, 0, round(average_price)) AS average_price,
+        DECODE(deal_average_decprice, NULL , 0, round(deal_average_decprice)) AS deal_average_decprice
+        FROM
+        edg_mark_supply_deal_m
+        WHERE
+        layer_code = #{layer_code}
+        AND usage_code = #{usage_code}
+        <include refid="yearTemp"/>
+        order by ym
+    </select>
+
+    <!--  .............................全域本年累计批准预售面积..............................................................................  -->
+
+    <!--全域本年累计批准预售面积 -弹出层- 行政区域统计  -->
+    <resultMap id="PompAllpresellRegResultMap" type="com.funi.platform.edg.bo.MarketPompRegion">
+        <result column="REGION_NAME" property="region_name"/><!--区域-->
+        <result column="PROJECT_NUM" property="project_num"/><!--新增项目数量-->
+        <result column="AREA" property="area"/><!--成交面积-->
+    </resultMap>
+    <select id="findPompAllpresellRegion" parameterType="com.funi.platform.edg.query.MarketQuery" resultMap="PompAllpresellRegResultMap">
+        select
+               t.region_name AS region_name,
+               count(1) AS project_num,
+               sum(t.gymj) AS area
+        from
+        (
+        select distinct a.region_code,
+               a.region_name,
+               b.project_code,
+               b.project_name,
+               round(sum(a.supply_area)/10000,2) as gymj
+        from edg_estate_supply_deal_m a inner join fina.fina_licenceid_community_rel b on a.presell_code=b.licenceid and a.data_source=b.ods_data_source
+        inner join edg.edg_parameter_dict d1 on a.region_code=d1.code and d1.parameter_type in ('主城区','二圈层','三圈层')
+        inner join edg.edg_parameter_dict d2 on d2.name=d1.parameter_type and d2.parameter_type='圈层'
+        where a.ym in
+        <foreach collection="timeList" item="obj" index="index"
+                 open="(" close=")" separator=",">
+            #{obj}
+        </foreach>
+        and d2.code = #{layer_code}
+        and a.usage_code = #{usage_code}
+        and b.project_code not in ('999999')
+        group by a.region_code,
+               a.region_name,
+               b.project_code,
+               b.project_name
+        having sum(a.supply_area)>0 ) t
+        group by t.region_code,
+               t.region_name
+    </select>
+
+    <!--全域本年累计批准预售面积 -弹出层- 项目排行  -->
+    <resultMap id="PompAllpresellObjResultMap" type="com.funi.platform.edg.bo.MarketPompObj">
+        <result column="PROJECT_NAME" property="project_name"/><!--项目名称-->
+        <result column="REGION_NAME" property="region_name"/><!--区域-->
+        <result column="AREA" property="area"/><!--成交面积-->
+    </resultMap>
+    <select id="findPompAllpresellObj" parameterType="com.funi.platform.edg.query.MarketQuery" resultMap="PompAllpresellObjResultMap">
+        SELECT * FROM (
+            select
+                   b.project_name as project_name,
+                   a.region_name as region_name,
+                   round(sum(a.supply_area)/10000,2) AS area
+            from edg_estate_supply_deal_m a inner join fina.fina_licenceid_community_rel b on a.presell_code=b.licenceid and a.data_source=b.ods_data_source
+            inner join edg.edg_parameter_dict d1 on a.region_code=d1.code and d1.parameter_type in ('主城区','二圈层','三圈层')
+            inner join edg.edg_parameter_dict d2 on d2.name=d1.parameter_type and d2.parameter_type='圈层'
+            where a.ym in
+            <foreach collection="timeList" item="obj" index="index"
+                     open="(" close=")" separator=",">
+                #{obj}
+            </foreach>
+            and d2.code  = #{layer_code}
+            and a.usage_code = #{usage_code}
+            and b.project_code not in ('999999')
+            group by a.region_code,
+                   a.region_name,
+                   b.project_code,
+                   b.project_name
+            having sum(a.supply_area)>0
+            order by sum(a.supply_area) desc
+        )
+        WHERE ROWNUM <![CDATA[ <= ]]>10
+    </select>
+
+    <!--  .............................全域本年累计成交面积..............................................................................  -->
+
+    <!--全域本年累计成交面积 -弹出层- 行政区域统计  -->
+    <resultMap id="PompAllAreaRegResultMap" type="com.funi.platform.edg.bo.MarketPompRegion">
+        <result column="REGION_NAME" property="region_name"/><!--区域-->
+        <result column="PROJECT_NUM" property="project_num"/><!--新增项目数量-->
+        <result column="AREA" property="area"/><!--成交面积-->
+    </resultMap>
+    <select id="findPompAllArearRegion" parameterType="com.funi.platform.edg.query.MarketQuery" resultMap="PompAllAreaRegResultMap">
+        select
+        t.region_name AS region_name,
+        count(1) AS project_num,
+        sum(t.gymj) AS area
+        from
+        (
+        select distinct a.region_code,
+        a.region_name,
+        b.project_code,
+        b.project_name,
+        round(sum(a.deal_area)/10000,2) as gymj
+        from edg_estate_supply_deal_m a inner join fina.fina_licenceid_community_rel b on a.presell_code=b.licenceid and a.data_source=b.ods_data_source
+        inner join edg.edg_parameter_dict d1 on a.region_code=d1.code and d1.parameter_type in ('主城区','二圈层','三圈层')
+        inner join edg.edg_parameter_dict d2 on d2.name=d1.parameter_type and d2.parameter_type='圈层'
+        where a.ym in
+        <foreach collection="timeList" item="obj" index="index"
+                 open="(" close=")" separator=",">
+            #{obj}
+        </foreach>
+        and d2.code = #{layer_code}
+        and a.usage_code = #{usage_code}
+        and b.project_code not in ('999999')
+        group by a.region_code,
+        a.region_name,
+        b.project_code,
+        b.project_name
+        having sum(a.deal_area)>0 ) t
+        group by t.region_code,
+        t.region_name
+    </select>
+
+    <!--全域本年累计成交面积 -弹出层- 项目排行 -->
+    <resultMap id="PompAllAreaObjResultMap" type="com.funi.platform.edg.bo.MarketPompObj">
+        <result column="PROJECT_NAME" property="project_name"/><!--项目名称-->
+        <result column="REGION_NAME" property="region_name"/><!--区域-->
+        <result column="AREA" property="area"/><!--成交面积-->
+    </resultMap>
+    <select id="findPompAllAreaObj" parameterType="com.funi.platform.edg.query.MarketQuery" resultMap="PompAllAreaObjResultMap">
+        SELECT * FROM (
+            select
+            b.project_name as project_name,
+            a.region_name as region_name,
+            round(sum(a.deal_area)/10000,2) AS area
+            from edg_estate_supply_deal_m a inner join fina.fina_licenceid_community_rel b on a.presell_code=b.licenceid and a.data_source=b.ods_data_source
+            inner join edg.edg_parameter_dict d1 on a.region_code=d1.code and d1.parameter_type in ('主城区','二圈层','三圈层')
+            inner join edg.edg_parameter_dict d2 on d2.name=d1.parameter_type and d2.parameter_type='圈层'
+            where a.ym in
+            <foreach collection="timeList" item="obj" index="index"
+                     open="(" close=")" separator=",">
+                #{obj}
+            </foreach>
+            and d2.code  = #{layer_code}
+            and a.usage_code = #{usage_code}
+            and b.project_code not in ('999999')
+            group by a.region_code,
+            a.region_name,
+            b.project_code,
+            b.project_name
+            having sum(a.deal_area)>0
+            order by sum(a.deal_area) desc
+        )
+        WHERE ROWNUM <![CDATA[ <= ]]>10
+    </select>
+
+
+    <!--  .............................全域当前可销售面积..............................................................................  -->
+
+    <!--全域当前可销售面积 -弹出层- 行政区域统计  -->
+    <resultMap id="PompAllsellRegResultMap" type="com.funi.platform.edg.bo.MarketPompRegion">
+        <result column="REGION_NAME" property="region_name"/><!--区域-->
+        <result column="PROJECT_NUM" property="project_num"/><!--新增项目数量-->
+        <result column="AREA" property="area"/><!--成交面积-->
+    </resultMap>
+    <select id="findPompAllsellRegion" parameterType="com.funi.platform.edg.query.MarketQuery" resultMap="PompAllsellRegResultMap">
+        select
+               t.region_name AS region_name,
+               count(1) AS project_num,
+               sum(t.ksmj) AS area
+        from
+        (
+        select distinct a.region_code,
+               a.region_name,
+               b.project_code,
+               b.project_name,
+               round(sum(a.stock_area)/10000,2) as ksmj
+        from edg.edg_estate_stock_d a inner join fina.fina_licenceid_community_rel b on a.presell_code=b.licenceid and a.data_source=b.ods_data_source
+        inner join edg.edg_parameter_dict d1 on a.region_code=d1.code and d1.parameter_type in ('主城区','二圈层','三圈层')
+        inner join edg.edg_parameter_dict d2 on d2.name=d1.parameter_type and d2.parameter_type='圈层'
+        where a.create_date=to_date(#{time},'yyyy-mm-dd')
+        and d2.code = #{layer_code}
+        and a.usage_code = #{usage_code}
+        and b.project_code not in ('999999')
+        group by a.region_code,
+               a.region_name,
+               b.project_code,
+               b.project_name
+        having sum(a.stock_area)>0 ) t
+        group by t.region_code,
+               t.region_name
+    </select>
+
+    <!--全域当前可销售面积 -弹出层- 项目排行  -->
+    <resultMap id="PompAllsellObjResultMap" type="com.funi.platform.edg.bo.MarketPompObj">
+        <result column="PROJECT_NAME" property="project_name"/><!--项目名称-->
+        <result column="REGION_NAME" property="region_name"/><!--区域-->
+        <result column="AREA" property="area"/><!--成交面积-->
+    </resultMap>
+    <select id="findPompAllsellObj" parameterType="com.funi.platform.edg.query.MarketQuery" resultMap="PompAllsellObjResultMap">
+        SELECT * FROM (
+            select
+                   b.project_name as project_name,
+                   a.region_name as region_name,
+                   round(sum(a.stock_area)/10000,2) AS area
+            from edg.edg_estate_stock_d a inner join fina.fina_licenceid_community_rel b on a.presell_code=b.licenceid and a.data_source=b.ods_data_source
+            inner join edg.edg_parameter_dict d1 on a.region_code=d1.code and d1.parameter_type in ('主城区','二圈层','三圈层')
+            inner join edg.edg_parameter_dict d2 on d2.name=d1.parameter_type and d2.parameter_type='圈层'
+            where a.create_date=to_date(#{time},'yyyy-mm-dd')
+            and d2.code = #{layer_code}
+            and a.usage_code = #{usage_code}
+            and b.project_code not in ('999999')
+            group by a.region_code,
+                   a.region_name,
+                   b.project_code,
+                   b.project_name
+            having sum(a.stock_area)>0
+            order by sum(a.stock_area) desc
+        )
+        WHERE ROWNUM <![CDATA[ <= ]]>10
+    </select>
+</mapper>

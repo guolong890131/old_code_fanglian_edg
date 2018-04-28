@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <!--应用WAR包应继承funi-platform-parent配置，统一日志以及Spring 版本选型-->
+        <groupId>com.funi.platform</groupId>
+        <artifactId>funi-platform-parent</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+    </parent>
+    <artifactId>funi-platform-edg</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+    <packaging>war</packaging>
+    <repositories>
+        <!-- 公司的maven仓库 -->
+        <repository>
+            <id>funiRepository</id>
+            <name>local private nexus</name>
+            <url>http://gitlab.funi.com/nexus/content/groups/public/</url>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>true</enabled>
+            </snapshots>
+        </repository>
+    </repositories>
+    <!-- 指定maven plugin仓库 -->
+    <pluginRepositories>
+        <!-- 公司的maven plugin仓库 -->
+        <pluginRepository>
+            <id>funiPluginRepository</id>
+            <name>local private nexus</name>
+            <url>http://gitlab.funi.com/nexus/content/groups/public/</url>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </pluginRepository>
+    </pluginRepositories>
+    <dependencies>
+        <!--引入ORM 层-->
+        <dependency>
+            <groupId>com.funi.framework</groupId>
+            <artifactId>funi-orm-core</artifactId>
+            <version>1.1.0-SNAPSHOT</version>
+        </dependency>
+        <dependency>
+            <groupId>com.funi.framework</groupId>
+            <artifactId>funi-mvc-core</artifactId>
+            <version>1.0.0-SNAPSHOT</version>
+        </dependency>
+        <dependency>
+            <groupId>commons-codec</groupId>
+            <artifactId>commons-codec</artifactId>
+            <version>1.10</version>
+        </dependency>
+        <dependency>
+            <groupId>net.sf.json-lib</groupId>
+            <artifactId>json-lib</artifactId>
+            <version>2.4</version>
+            <classifier>jdk15</classifier>
+        </dependency>
+        <!--连接SqlServer数据库-->
+        <dependency>
+            <groupId>com.microsoft.sqlserver</groupId>
+            <artifactId>sqljdbc4</artifactId>
+            <version>4.0</version>
+        </dependency>
+        <!--Excel导入导出-->
+        <dependency>
+            <groupId>com.funi.framework</groupId>
+            <artifactId>funi-data-migrate</artifactId>
+            <version>1.0.0</version>
+        </dependency>
+
+        <!-- https://mvnrepository.com/artifact/commons-dbcp/commons-dbcp -->
+        <dependency>
+            <groupId>commons-dbcp</groupId>
+            <artifactId>commons-dbcp</artifactId>
+            <version>1.2.2</version>
+        </dependency>
+
+
+    </dependencies>
+    <build>
+        <finalName>funi-platform-edg</finalName>
+    </build>
+</project>
+

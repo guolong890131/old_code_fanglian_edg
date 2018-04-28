@@ -1,0 +1,453 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.funi.platform.edg.dao.BuildDao">
+
+
+    <!-- 分页sql -->
+    <sql id="header">
+        select * from (select com.*,ROWNUM row_num from (
+    </sql>
+    <sql id="footer">
+        ) com where ROWNUM &lt;=#{end} ) where row_num &gt;=#{start}
+    </sql>
+
+    <sql id="buildTemp">
+        <where>
+            <if test="region_code!=null and region_code!=''">
+                AND t.region_code IN
+                <foreach item="item" index="index" collection="region_code" open="(" separator="," close=")">
+                    #{item}
+                </foreach>
+            </if>
+            <!--<if test="startTime!=null and startTime!=''">-->
+                <!--AND t.print_date <![CDATA[ >= ]]>to_date(#{startTime},'yyyy/mm/dd')-->
+            <!--</if>-->
+            <!--<if test="endTime!=null and endTime!=''">-->
+                <!--AND t.print_date <![CDATA[ <= ]]>to_date(#{endTime},'yyyy/mm/dd')-->
+            <!--</if>-->
+            <if test="timeType=='create_time'">
+                AND  trunc(t.create_time) <![CDATA[ >= ]]>to_date(#{startTime},'yyyy/mm/dd')
+            </if>
+            <if test="timeType=='create_time'">
+                AND  trunc(t.create_time) <![CDATA[ <= ]]>to_date(#{endTime},'yyyy/mm/dd')
+            </if>
+
+            <if test="timeType=='print_date'">
+                AND  trunc(t.print_date) <![CDATA[ >= ]]>to_date(#{startTime},'yyyy/mm/dd')
+            </if>
+            <if test="timeType=='print_date'">
+                AND  trunc(t.print_date) <![CDATA[ <= ]]>to_date(#{endTime},'yyyy/mm/dd')
+            </if>
+
+            <if test="build_no!=null and build_no!=''">
+                AND  to_single_byte(UPPER(t.build_no)) LIKE  to_single_byte(UPPER (concat(concat('%',#{build_no}),'%')))
+            </if>
+            <if test="build_name!=null and build_name!=''">
+                AND  to_single_byte(UPPER(t.build_name)) LIKE  to_single_byte(UPPER (concat(concat('%',#{build_name}),'%')))
+            </if>
+            <if test="address!=null and address!=''">
+                AND  to_single_byte(UPPER(t.address)) LIKE  to_single_byte(UPPER (concat(concat('%',#{address}),'%')))
+            </if>
+            <if test="construction_unit!=null and construction_unit!=''">
+                AND  to_single_byte(UPPER(t.construction_unit)) LIKE  to_single_byte(UPPER (concat(concat('%',#{construction_unit}),'%')))
+            </if>
+        </where>
+
+    </sql>
+
+    <select id="queryBuild" parameterType="java.util.HashMap" resultType="com.funi.platform.edg.bo.BuildVo">
+        <include refid="header"/>
+         select
+           t.uuid,
+           t.xh as id,
+           d.name as region,
+           t.build_no,
+           t.layout_no,
+           t.build_name,
+           t.construction_unit,
+           t.build_unit,
+           t.supervisor_unit,
+           t.construction_scale,
+           t.price,
+           t.address,
+           to_char(t.print_date,'yyyy-mm-dd') as print_date,
+           to_char(t.build_date,'yyyy-mm-dd') as build_date,
+           to_char(t.compulete_date,'yyyy-mm-dd') as compulete_date,
+           t.data_source,
+           t.region_code,
+         to_char(t.create_time,'yyyy-mm-dd') create_time,
+           decode(t.file_status,0,'未提交',1,'已提交','未提交') as file_status,
+           t.inputer_id,
+            t.s1,
+            t.s2,
+            t.s3,
+            t.s4,
+            t.s5,
+            (case when t.INPUTER_ID = #{useruuid} then 1 else 0 end) ifcurrent
+        from edg.edg_build_b t
+        INNER JOIN (SELECT name,code FROM edg.EDG_PARAMETER_DICT where parameter_type='行政区域类' and IF_SHOW=1) d ON t.region_code=d.code
+--         left JOIN edg.edg_build_b_extend e on t.build_no = e.build_no and t.region_code = e.data_source
+        <include refid="buildTemp"/>
+         <if test="timeType=='create_time'">
+            order by t.create_time desc
+        </if>
+        <if test="timeType=='print_date'">
+            order by t.print_date desc
+        </if>
+        <include refid="footer"/>
+    </select>
+
+    <select id="queryTotal" parameterType="java.util.HashMap" resultType="java.lang.Long">
+        select count(1) from(
+        select * from edg.edg_build_b t
+        INNER JOIN (SELECT name,code FROM edg.EDG_PARAMETER_DICT where parameter_type='行政区域类' and IF_SHOW=1) d ON t.region_code=d.code
+--         left JOIN edg.edg_build_b_extend e on t.build_no = e.build_no and t.region_code = e.data_source
+        <include refid="buildTemp"/>
+        )temp
+
+    </select>
+
+
+    <update id="updateinputFieldBs" parameterType="java.util.HashMap">
+        UPDATE edg.edg_build_b SET file_status = 1 WHERE uuid IN
+        <foreach item="item" index="index" collection="ids" open="(" separator="," close=")">
+            #{item}
+        </foreach>
+    </update>
+    <update id="updateinputFieldB" parameterType="java.util.HashMap">
+        UPDATE edg.edg_build_b SET file_status = 1 WHERE uuid = #{ids}
+    </update>
+
+
+
+
+
+    <sql id="completedTemp">
+        <where>
+            <if test="region_code!=null and region_code!=''">
+                AND t.region_code IN
+                <foreach item="item" index="index" collection="region_code" open="(" separator="," close=")">
+                    #{item}
+                </foreach>
+            </if>
+            <!--<if test="startTime!=null and startTime!=''">-->
+                <!--AND t.completed_date <![CDATA[ >= ]]>to_date(#{startTime},'yyyy/mm/dd')-->
+            <!--</if>-->
+            <!--<if test="endTime!=null and endTime!=''">-->
+                <!--AND t.completed_date <![CDATA[ <= ]]>to_date(#{endTime},'yyyy/mm/dd')-->
+            <!--</if>-->
+            <if test="timeType=='create_time'">
+                AND  trunc(t.create_time) <![CDATA[ >= ]]>to_date(#{startTime},'yyyy/mm/dd')
+            </if>
+            <if test="timeType=='create_time'">
+                AND  trunc(t.create_time) <![CDATA[ <= ]]>to_date(#{endTime},'yyyy/mm/dd')
+            </if>
+
+            <if test="timeType=='completed_date'">
+                AND  trunc(t.completed_date) <![CDATA[ >= ]]>to_date(#{startTime},'yyyy/mm/dd')
+            </if>
+            <if test="timeType=='completed_date'">
+                AND  trunc(t.completed_date) <![CDATA[ <= ]]>to_date(#{endTime},'yyyy/mm/dd')
+            </if>
+
+            <if test="completed_no!=null and completed_no!=''">
+                AND  to_single_byte(UPPER(t.completed_no)) LIKE  to_single_byte(UPPER (concat(concat('%',#{completed_no}),'%')))
+            </if>
+            <if test="build_no!=null and build_no!=''">
+                AND  to_single_byte(UPPER(t.build_no)) LIKE  to_single_byte(UPPER (concat(concat('%',#{build_no}),'%')))
+            </if>
+        </where>
+
+    </sql>
+
+
+    <select id="queryCompleted" parameterType="java.util.HashMap" resultType="com.funi.platform.edg.bo.Completed">
+        <![CDATA[
+            select * from (
+            select n.*,rownum num from (
+        ]]>
+
+        select
+        t.xh as id,
+        d.name as region,
+        t.region_code,
+        t.completed_no,
+        t.layout_no,
+        t.build_no,
+        to_char(t.completed_date,'yyyy-mm-dd') as completed_date,
+        t.completed_scale,
+        t.construction_unit,
+        t.address,
+        t.build_name,
+        t.j1,
+        t.j2,
+        t.j3,
+        t.j4,
+        t.j5,
+        to_char(t.create_time,'yyyy-mm-dd') create_time,
+        decode(t.file_status,0,'未提交',1,'已提交','未提交') as file_status,
+        t.inputer_id
+        from edg.edg_completed_b t
+        INNER JOIN (SELECT name,code FROM edg.EDG_PARAMETER_DICT where parameter_type='行政区域类' and IF_SHOW=1) d ON t.region_code=d.code
+        <include refid="completedTemp"/>
+        <if test="timeType=='create_time'">
+            order by t.create_time desc
+        </if>
+        <if test="timeType=='completed_date'">
+            order by t.completed_date desc
+        </if>
+			) n <![CDATA[where rownum<=#{end}) where num>#{start}
+        ]]>
+    </select>
+
+    <select id="queryTotalCompleted" parameterType="java.util.HashMap" resultType="java.lang.Long">
+        select count(1) from(
+        select * from edg.edg_completed_b t
+        INNER JOIN (SELECT name,code FROM edg.EDG_PARAMETER_DICT where parameter_type='行政区域类' and IF_SHOW=1) d ON t.region_code=d.code
+--         left JOIN edg.edg_completed_b_extend e on t.completed_no = e.completed_no and t.region_code = e.data_source
+        <include refid="completedTemp"/>
+        )temp
+
+    </select>
+
+    <update id="updateinputFieldCs" parameterType="java.util.HashMap">
+        UPDATE edg.edg_completed_b SET file_status = 1 WHERE xh IN
+        <foreach item="item" index="index" collection="ids" open="(" separator="," close=")">
+            #{item}
+        </foreach>
+    </update>
+    <update id="updateinputFieldC" parameterType="java.util.HashMap">
+        UPDATE edg.edg_completed_b SET file_status = 1 WHERE xh = #{ids}
+    </update>
+
+    <select id="queryLayoutNo" parameterType="java.lang.String" resultType="java.util.HashMap">
+        select DISTINCT a.LAYOUT_NO layoutno,d.name region,b.ADDRESS address,b.CONSTRUCTION_PROJECT_NAME  project,
+        b.construction_unit unit
+        from EDG.EDG_LAYOUT_B_EXTEND a
+        INNER JOIN edg.EDG_LAYOUT_B b on a.xh = b.XH
+        INNER JOIN EDG.EDG_PARAMETER_DICT d on d.code=b.region_code
+        where b.FILE_STATUS = 1
+        <if test="_parameter  != null">
+            and a.LAYOUT_NO like '%'||#{_parameter}||'%'
+        </if>
+    </select>
+
+    <!--新增基础数据-->
+    <insert id="insertBuild" parameterType="com.funi.platform.edg.bo.BuildVo" >
+        INSERT INTO EDG.EDG_BUILD_B (
+            UUID,XH,BUILD_NO,LAYOUT_NO,BUILD_NAME,CONSTRUCTION_UNIT,REGION_NAME,BUILD_UNIT,SUPERVISOR_UNIT,CONSTRUCTION_SCALE,PRICE,ADDRESS,
+            PRINT_DATE,BUILD_DATE,COMPULETE_DATE,DATA_SOURCE,PROJECT_CODE,PROJECT_NAME,REGION_CODE,FILE_STATUS,INPUTER_ID,S1,S2,S3,S4,S5
+        )
+        VALUES
+            (
+                (EDG.SEQ_EDG_BUILD_B_UUID.nextval),#{xh},#{build_no},#{layout_no},#{build_name},#{construction_unit},#{region},#{build_unit},#{supervisor_unit},
+                #{construction_scale},#{price},#{address},TO_DATE (#{print_date}||' 00:00:00','SYYYY-MM-DD HH24:MI:SS'),
+                TO_DATE (#{build_date}||' 00:00:00','SYYYY-MM-DD HH24:MI:SS'),TO_DATE (#{compulete_date}||' 00:00:00','SYYYY-MM-DD HH24:MI:SS'),
+                #{region_code},
+                NULL,NULL,
+                #{region_code},
+                #{file_status},
+                #{inputer_id},
+                #{s1},
+                #{s2},
+                #{s3},
+                #{s4},
+                #{s5}
+            )
+    </insert>
+
+    <!--新增关联数据-->
+    <insert id="insertRelation" parameterType="com.funi.platform.edg.bo.BuildVo" >
+        INSERT INTO EDG.EDG_BUILD_B_EXTEND (UUID, XH, BUILD_NO, LAYOUT_NO, DATA_SOURCE) VALUES
+        ((EDG.SEQ_EDG_BUILD_B_EXTEND_UUID.nextval),#{xh},#{build_no},#{layout_no},#{region_code})
+    </insert>
+
+    <!--删除基础数据-->
+    <delete id="deleteBuild" parameterType="java.util.List">
+        DELETE from EDG.EDG_BUILD_B where uuid in
+        <foreach collection="list" index="index" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+
+    <!--删除关联数据-->
+    <delete id="deleteRelation" parameterType="java.util.List">
+        delete from EDG.EDG_BUILD_B_EXTEND where xh in (
+          select xh from EDG.EDG_BUILD_B where uuid in
+            <foreach collection="list" index="index" item="id" open="(" separator="," close=")">
+                #{id}
+            </foreach>
+        )
+    </delete>
+
+    <!--查询序号序列-->
+    <select id="queryXhSEQ" resultType="java.lang.Integer">
+        select EDG.SEQ_EDG_BUILD_B_XH.nextval from dual
+    </select>
+
+    <select id="querySingleBuild" resultType="com.funi.platform.edg.bo.BuildVo" parameterType="java.lang.Integer">
+        select a.UUID,a.XH,a.BUILD_NO,a.LAYOUT_NO,a.BUILD_NAME,a.CONSTRUCTION_UNIT,a.REGION_NAME region,a.BUILD_UNIT,a.SUPERVISOR_UNIT,a.CONSTRUCTION_SCALE,a.PRICE,a.ADDRESS,
+            a.PRINT_DATE,a.BUILD_DATE,a.COMPULETE_DATE,a.DATA_SOURCE,a.PROJECT_CODE,a.PROJECT_NAME,a.REGION_CODE,a.FILE_STATUS,a.INPUTER_ID,a.S1,a.S2,a.S3,a.S4,a.S5
+         from EDG.EDG_BUILD_B a where a.uuid = #{uuid}
+    </select>
+    
+    <update id="updateBuild"  parameterType="com.funi.platform.edg.bo.BuildVo">
+        UPDATE EDG.EDG_BUILD_B
+        <trim prefix="set" suffixOverrides=",">
+            <if test="build_no!=null">build_no=#{build_no},</if >
+            <if test="layout_no!=null">layout_no=#{layout_no},</if >
+            <if test="build_name!=null">build_name=#{build_name},</if >
+            <if test="construction_unit!=null">construction_unit=#{construction_unit},</if >
+            <if test="build_unit!=null">build_unit=#{build_unit},</if >
+            <if test="supervisor_unit!=null">supervisor_unit=#{supervisor_unit},</if >
+            <if test="construction_scale!=null">construction_scale=#{construction_scale},</if >
+            <if test="price!=null">price=#{price},</if >
+            <if test="address!=null">address=#{address},</if >
+            <if test="print_date!=null">print_date=TO_DATE (#{print_date}||' 00:00:00','SYYYY-MM-DD HH24:MI:SS'),</if >
+            <if test="build_date!=null">build_date=TO_DATE (#{build_date}||' 00:00:00','SYYYY-MM-DD HH24:MI:SS'),</if >
+            <if test="compulete_date!=null">compulete_date=TO_DATE (#{compulete_date}||' 00:00:00','SYYYY-MM-DD HH24:MI:SS'),</if >
+            <if test="data_source!=null">data_source=#{data_source},</if >
+            <if test="region_code!=null">region_code=#{region_code},</if >
+            <if test="file_status!=null">file_status=#{file_status},</if>
+            <if test="s1!=null">s1=#{s1},</if >
+            <if test="s2!=null">s2=#{s2},</if >
+            <if test="s3!=null">s3=#{s3},</if >
+            <if test="s4!=null">s4=#{s4},</if >
+            <if test="s5!=null">s5=#{s5},</if >
+        </trim>
+        WHERE uuid=#{uuid}
+    </update>
+
+
+
+
+    <!--查询 规划许可证号-->
+    <select id="queryBAH" parameterType="java.lang.String" resultType="com.funi.platform.edg.bo.SearchOne">
+        <!--SELECT e.layout_no as name-->
+        <!--FROM edg.edg_build_b_extend e-->
+        <!--INNER JOIN edg.edg_build_b b on e.xh=b.xh-->
+        <!--WHERE b.FILE_STATUS=1-->
+        <!--and e.layout_no is not null-->
+        <!--<if test="layout_no!=null and layout_no!=''">-->
+            <!--AND e.layout_no LIKE '%'||#{layout_no}||'%'-->
+        <!--</if>-->
+
+        select DISTINCT a.LAYOUT_NO name,d.name region,b.ADDRESS address,b.CONSTRUCTION_PROJECT_NAME  project
+        ,b.construction_unit unit
+        from EDG.EDG_LAYOUT_B_EXTEND a
+        INNER JOIN edg.EDG_LAYOUT_B b on a.xh = b.XH
+        INNER JOIN EDG.EDG_PARAMETER_DICT d on d.code=b.region_code
+        where b.FILE_STATUS = 1
+        <if test="layout_no!=null and layout_no!=''">
+            AND a.layout_no LIKE '%'||#{layout_no}||'%'
+        </if>
+    </select>
+    <!--查询 施工许可证书编号-->
+    <select id="queryBSG" parameterType="java.lang.String" resultType="com.funi.platform.edg.bo.SearchOne">
+        SELECT DISTINCT e.build_no as name,d.name AS region,b.BUILD_NAME as buildname,b.ADDRESS  as address
+        FROM edg.edg_build_b_extend e
+        INNER JOIN edg.edg_build_b b on e.xh=b.xh
+        INNER JOIN EDG.EDG_PARAMETER_DICT d on d.code=b.region_code
+        WHERE b.FILE_STATUS=1
+        and e.build_no is not null
+        <if test="build_no!=null and build_no!=''">
+            AND e.build_no LIKE '%'||#{build_no}||'%'
+        </if>
+    </select>
+
+
+
+
+    <!--查询序号序列-->
+    <select id="findCompletedXh" resultType="java.lang.Integer">
+        select edg.seq_edg_completed_b_xh.nextval from dual
+    </select>
+
+    <!--竣工新增-->
+    <insert id="insertCompleted" parameterType="com.funi.platform.edg.bo.Completed">
+        INSERT INTO edg.edg_completed_b
+        (xh,region_code,completed_no,layout_no,address,build_no,completed_date,completed_scale,j1,j2,j3,j4,j5,construction_unit,build_name,file_status,inputer_id)
+        VALUES
+        (#{id},#{region_code},#{completed_no},#{layout_no},#{address},#{build_no},to_date(#{completed_date},'yyyy-mm-dd'),#{completed_scale},#{j1},#{j2},#{j3},#{j4},#{j5},#{construction_unit},#{build_name},#{file_status},#{inputer_id})
+    </insert>
+
+    <insert id="insertCompletedExtend" parameterType="java.util.HashMap">
+        INSERT INTO edg.edg_completed_b_extend
+        (xh,data_source,completed_no,build_no,layout_no)
+        VALUES
+        (#{xh},#{region_code},#{completed_no},#{build_no},#{layout_no})
+    </insert>
+
+
+    <!--竣工删除-->
+    <delete id="deleteCompleteds" parameterType="java.util.HashMap">
+        DELETE FROM edg.edg_completed_b
+        WHERE xh IN
+        <foreach item="item" index="index" collection="ids" open="(" separator="," close=")">
+            #{item}
+        </foreach>
+        AND file_status = 0
+    </delete>
+    <delete id="deleteCompleted" parameterType="java.util.HashMap">
+        DELETE FROM edg.edg_completed_b
+        WHERE xh = #{ids}
+        AND file_status = 0
+    </delete>
+
+
+    <!--竣工编辑-->
+    <update id="updateCompleted" parameterType="com.funi.platform.edg.bo.Completed">
+        UPDATE edg.edg_completed_b
+        SET
+         region_code = #{region_code},
+         completed_no = #{completed_no},
+         layout_no = #{layout_no},
+         address = #{address},
+         build_no = #{build_no},
+         completed_date = to_date(#{completed_date},'yyyy-mm-dd'),
+         completed_scale = #{completed_scale},
+         j1 = #{j1},
+         j2 = #{j2},
+         j3 = #{j3},
+         j4 = #{j4},
+         j5 = #{j5},
+         construction_unit = #{construction_unit},
+         build_name = #{build_name},
+         file_status = #{file_status},
+         inputer_id = #{inputer_id}
+        WHERE
+        xh = #{id}
+    </update>
+
+    <delete id="deleteCompletedExtend" parameterType="java.lang.String">
+        DELETE FROM edg.edg_completed_b_extend
+        WHERE xh = #{id}
+    </delete>
+
+
+    <select id="checkBuild" parameterType="java.lang.String" resultType="java.lang.Integer">
+        select count(1) from(
+        select * from edg.edg_build_b t where upper(t.build_no) = upper(#{build_no})
+        )temp
+    </select>
+
+    <select id="checkCompleted" parameterType="java.lang.String" resultType="java.lang.Integer">
+        select count(1) from(
+        select * from edg.edg_completed_b t where upper(t.completed_no) = upper(#{completed_no})
+        )temp
+    </select>
+
+    <select id="checkLayout" parameterType="java.lang.String" resultType="java.lang.Integer">
+        select count(1) from(
+        select * from edg.edg_build_b_extend t where upper(t.layout_no) = upper(#{layout_no})
+        )temp
+    </select>
+
+    <select id="checkCompletedAssociate" parameterType="java.lang.String" resultType="java.lang.Integer">
+        select count(1) from(
+        select * from edg.edg_completed_b_extend t where upper(t.build_no) = upper(#{build_no})
+        )temp
+    </select>
+</mapper>

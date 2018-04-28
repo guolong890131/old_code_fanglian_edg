@@ -1,0 +1,5 @@
+{
+    "executiveData":[{"region": "成都市","text":"全域"},{"region": "锦江区","text":"锦江区"},{"region": "成华区","text":"成华区"},{"region": "武侯区","text":"武侯区"},{"region": "金牛区","text":"金牛区"},{"region": "青羊区","text":"青羊区"}],
+    "importantData":[{"region": "锦江区","text":"锦江区"},{"region": "成华区","text":"成华区"},{"region": "青羊区","text":"青羊区"}],
+    "pointData":[{"x":104.1078618,"y":31.81,"type":"项目名称","area":1.2,"id":1},{"x":104.278618,"y":30.21,"type":"建","area":3.3,"id":2},{"x":104.378618,"y":31.21,"type":"规","area":6.5,"id":3},{"x":103.778618,"y":31.41,"type":"地","area":3.9,"id":4}]
+}

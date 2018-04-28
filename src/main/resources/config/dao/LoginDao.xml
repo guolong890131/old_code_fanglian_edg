@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.funi.platform.edg.dao.LoginDao">
+
+    <select id="findUser" parameterType="java.util.HashMap" resultType="java.lang.Integer">
+        select count(*) from edg.edg_user where LOGIN_NAME=#{account} and LOGIN_PASS=#{password} AND STATUS=1
+    </select>
+
+    <select id="findUserName" parameterType="java.util.HashMap" resultType="java.lang.Integer">
+        select count(*) from edg.edg_user where LOGIN_NAME=#{account} AND STATUS=1
+    </select>
+
+    <select id="findRole" parameterType="java.util.HashMap" resultType="java.util.HashMap">
+        select role_code,uuid from edg.edg_user where LOGIN_NAME=#{account} and LOGIN_PASS=#{password} AND STATUS=1
+    </select>
+
+    <!-- 指定对应的mapper文件-->
+    <resultMap id="menuResultMap" type="com.funi.platform.edg.bo.Menu">
+        <result column="MENU_NAME" property="menu_name"/>
+        <result column="MENU_CODE" property="menu_code"/>
+    </resultMap>
+    <select id="findMenu" parameterType="java.lang.String" resultMap="menuResultMap">
+        select menu_name,menu_code from edg.edg_role where role_id=#{role} ORDER by sort
+    </select>
+
+    <select id="getUserDate" resultType="java.util.HashMap" parameterType="java.lang.String">
+        select TO_CHAR(indate,'yyyy-mm-dd') indate,TO_CHAR(editdate,'yyyy-mm-dd') editdate,TO_CHAR(sysdate,'yyyy-mm-dd') sdate
+        from EDG.EDG_USER where uuid = #{uuid}
+    </select>
+</mapper>

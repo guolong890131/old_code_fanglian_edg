@@ -1,0 +1,232 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.funi.platform.edg.dao.LayoutDao">
+
+    <sql id="layoutTemp">
+        <where>
+            <if test="region_code!=null and region_code!=''">
+                AND t.region_code IN
+                <foreach item="item" index="index" collection="region_code" open="(" separator="," close=")">
+                    #{item}
+                </foreach>
+            </if>
+            <!--<if test="startTime!=null and startTime!=''">-->
+                <!--AND t.print_date <![CDATA[ >= ]]>to_date(#{startTime},'yyyy/mm/dd')-->
+            <!--</if>-->
+            <!--<if test="endTime!=null and endTime!=''">-->
+                <!--AND t.print_date <![CDATA[ <= ]]>to_date(#{endTime},'yyyy/mm/dd')-->
+            <!--</if>-->
+            <if test="timeType=='create_time'">
+                AND  trunc(t.create_time) <![CDATA[ >= ]]>to_date(#{startTime},'yyyy/mm/dd')
+            </if>
+            <if test="timeType=='create_time'">
+                AND  trunc(t.create_time)  <![CDATA[ <= ]]>to_date(#{endTime},'yyyy/mm/dd')
+            </if>
+
+            <if test="timeType=='print_date'">
+                AND  trunc(t.print_date) <![CDATA[ >= ]]>to_date(#{startTime},'yyyy/mm/dd')
+            </if>
+            <if test="timeType=='print_date'">
+                AND  trunc(t.print_date) <![CDATA[ <= ]]>to_date(#{endTime},'yyyy/mm/dd')
+            </if>
+
+            <if test="layout_no!=null and layout_no!=''">
+                AND  to_single_byte(UPPER(t.layout_no)) LIKE  to_single_byte(UPPER (concat(concat('%',#{layout_no}),'%')))
+            </if>
+            <if test="construction_project_name!=null and construction_project_name!=''">
+                AND  to_single_byte(UPPER(t.construction_project_name)) LIKE  to_single_byte(UPPER (concat(concat('%',#{construction_project_name}),'%')))
+            </if>
+            <if test="address!=null and address!=''">
+                AND  to_single_byte(UPPER(t.address)) LIKE  to_single_byte(UPPER (concat(concat('%',#{address}),'%')))
+            </if>
+            <if test="construction_unit!=null and construction_unit!=''">
+                AND  to_single_byte(UPPER(t.construction_unit)) LIKE  to_single_byte(UPPER (concat(concat('%',#{construction_unit}),'%')))
+            </if>
+        </where>
+    </sql>
+
+    <select id="queryLayout" parameterType="java.util.HashMap" resultType="com.funi.platform.edg.bo.Layout">
+        <![CDATA[
+            select * from (
+            select n.*,rownum num from (
+        ]]>
+
+        select
+            t.xh as id,
+            d.name as region,
+            t.project_bh,
+            t.region_code,
+            t.ffileno,
+            t.fctrno,
+            t.construction_unit,
+            t.construction_project_name,
+            t.address,
+            t.layout_no,
+            to_char(t.print_date,'yyyy-mm-dd') as print_date,
+            t.construction_scale,
+            t.c1,
+            t.c2,
+            t.c3,
+            t.c4,
+            t.c5,
+            t.c6,
+            t.c7,
+            t.c8,
+            t.c9,
+            t.map_code,
+        to_char(t.create_time,'yyyy-mm-dd') create_time,
+            decode(t.file_status,0,'未提交',1,'已提交','未提交') as file_status,
+            t.inputer_id
+        from edg_layout_b t
+        INNER JOIN (SELECT name,code FROM edg.EDG_PARAMETER_DICT where parameter_type='行政区域类' and IF_SHOW=1) d ON t.region_code=d.code
+        --left JOIN edg_layout_b_extend e on t.layout_no = e.layout_no and t.region_code = e.region_code
+        <include refid="layoutTemp"/>
+        <if test="timeType=='create_time'">
+            order by t.create_time desc
+        </if>
+        <if test="timeType=='print_date'">
+            order by t.print_date desc
+        </if>
+
+        	) n <![CDATA[where rownum<=#{end}) where num>#{start}
+        ]]>
+
+    </select>
+
+
+    <select id="queryTotal" parameterType="java.util.HashMap" resultType="java.lang.Long">
+        select count(1) from(
+        select * from edg.edg_layout_b t
+        INNER JOIN (SELECT name,code FROM edg.EDG_PARAMETER_DICT where parameter_type='行政区域类' and IF_SHOW=1) d ON t.region_code=d.code
+--         left JOIN edg_layout_b_extend e on t.layout_no = e.layout_no and t.region_code = e.region_code
+        <include refid="layoutTemp"/>
+        )temp
+    </select>
+
+
+    <update id="updateInputLayouts" parameterType="java.util.HashMap">
+        UPDATE edg.edg_layout_b SET file_status = 1 WHERE xh IN
+        <foreach item="item" index="index" collection="ids" open="(" separator="," close=")">
+            #{item}
+        </foreach>
+    </update>
+    <update id="updateInputLayout" parameterType="java.util.HashMap">
+        UPDATE edg.edg_layout_b SET file_status = 1 WHERE xh = #{ids}
+    </update>
+
+
+
+    <!--删除-->
+    <delete id="deleteLayouts" parameterType="java.util.HashMap">
+        DELETE FROM edg.edg_layout_b
+        WHERE xh IN
+        <foreach item="item" index="index" collection="ids" open="(" separator="," close=")">
+            #{item}
+        </foreach>
+        AND file_status = 0
+    </delete>
+    <delete id="deleteLayout" parameterType="java.util.HashMap">
+        DELETE FROM edg.edg_layout_b
+        WHERE xh = #{ids}
+        AND file_status = 0
+    </delete>
+
+
+    <!--查询土地合同编号-->
+    <select id="queryBAH" parameterType="java.lang.String" resultType="com.funi.platform.edg.bo.SearchOne">
+        SELECT DISTINCT e.fctrno_new as name,d.name as region,b.faddress as address,b.FOWNER as fowner
+        FROM edg.EDG_FIELD_B_EXTEND e
+        INNER JOIN edg.edg_field_b b on e.fid=b.fid
+        INNER JOIN EDG.EDG_PARAMETER_DICT d on b.DATA_SOURCE=d.code
+        WHERE b.FILE_STATUS=1
+        and e.fctrno_new is not null
+        <if test="fctrno_new!=null and fctrno_new!=''">
+            AND e.fctrno_new LIKE  '%'||#{fctrno_new}||'%'
+        </if>
+    </select>
+
+
+    <!--查询土地合同编号-->
+    <select id="queryBDC" parameterType="java.lang.String" resultType="com.funi.platform.edg.bo.SearchOne">
+        SELECT DISTINCT e.ffileno_new as name
+        FROM edg.EDG_FIELD_B_EXTEND e
+        INNER JOIN edg.edg_field_b b on e.fid=b.fid
+        WHERE b.FILE_STATUS=1
+        and e.ffileno_new is not null
+        <if test="ffileno_new!=null and ffileno_new!=''">
+            AND e.ffileno_new LIKE  '%'||#{ffileno_new}||'%'
+        </if>
+    </select>
+
+    <!--查询序号序列-->
+    <select id="findXh" resultType="java.lang.Integer">
+        select edg.seq_edg_layout_b_xh.nextval from dual
+    </select>
+
+    <!--新增-->
+    <insert id="insertLayout" parameterType="com.funi.platform.edg.bo.Layout">
+        INSERT INTO edg.edg_layout_b
+        (uuid,xh,region_code,construction_unit,construction_project_name,address,layout_no,print_date,construction_scale,c2,c3,c4,c5,c6,c7,c8,c9,fctrno,ffileno,file_status,inputer_id)
+        VALUES
+        (edg.SEQ_EDG_LAYOUT_B_UUID.nextval,#{id},#{region_code},#{construction_unit},#{construction_project_name},#{address},#{layout_no},to_date(#{print_date},'yyyy-mm-dd'),#{construction_scale},#{c2},#{c3},#{c4},#{c5},#{c6},#{c7},#{c8},#{c9},#{fctrno},#{ffileno},#{file_status},#{inputer_id})
+    </insert>
+    <insert id="insertLayoutExtend" parameterType="java.util.HashMap">
+        INSERT INTO edg.edg_layout_b_extend
+        (uuid,xh,region_code,ffileno,fctrno,layout_no,print_date)
+        VALUES
+        (edg.SEQ_EDG_LAYOUT_B_EXTEND_UUID.nextval,#{xh},#{region_code},#{ffileno},#{fctrno},#{layout_no},to_date(#{print_date},'yyyy-mm-dd'))
+    </insert>
+
+
+    <!--编辑-->
+    <update id="updateLayout" parameterType="com.funi.platform.edg.bo.Layout">
+        UPDATE edg.edg_layout_b
+        SET
+        region_code = #{region_code},
+        construction_unit = #{construction_unit},
+        construction_project_name = #{construction_project_name},
+        address = #{address},
+        layout_no = #{layout_no},
+        print_date = to_date(#{print_date},'yyyy-mm-dd'),
+        construction_scale = #{construction_scale},
+        c2 = #{c2},
+        c3 = #{c3},
+        c4 = #{c4},
+        c5 = #{c5},
+        c6 = #{c6},
+        c7 = #{c7},
+        c8 = #{c8},
+        c9 = #{c9},
+        fctrno = #{fctrno},
+        ffileno = #{ffileno},
+        file_status = #{file_status},
+        inputer_id = #{inputer_id}
+        WHERE
+        xh = #{id}
+    </update>
+
+    <delete id="deleteLayoutExtend" parameterType="java.lang.String">
+        DELETE FROM edg.edg_layout_b_extend
+        WHERE xh = #{id}
+    </delete>
+
+    <select id="checkLayout" parameterType="java.lang.String" resultType="java.lang.Integer">
+        select count(1) from(
+        select * from edg.edg_layout_b t where upper(t.layout_no) = upper(#{layout_no})
+        )temp
+    </select>
+
+    <select id="checkField" parameterType="java.lang.String" resultType="java.lang.Integer">
+        select count(1) from(
+        select * from edg.edg_layout_b_extend t where upper(t.fctrno) = upper(#{fctrno_new})
+        )temp
+    </select>
+
+    <select id="checkFfileno" parameterType="java.lang.String" resultType="java.lang.Integer">
+        select count(1) from(
+        select * from edg.edg_layout_b_extend t where upper(t.ffileno) = upper(#{ffileno})
+        )temp
+    </select>
+</mapper>

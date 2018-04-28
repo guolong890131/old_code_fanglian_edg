@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.funi.platform.edg.dao.CommonDao">
+    <!-- 指定对应的mapper文件-->
+    <resultMap id="timeResultMap" type="com.funi.platform.edg.bo.ParaDate">
+        <result column="LAST_DATE" property="last_date"/><!--最后更新时间';-->
+        <result column="DEFAULT_DATE" property="default_date"/><!--'默认查询时间';-->
+        <result column="DEFAULT_Y" property="default_y"/><!--'默认查询年';-->
+        <result column="DEFAULT_M" property="default_m"/><!--默认查询月';-->
+        <result column="DEFAULT_D" property="default_d"/><!--默认查询日';-->
+    </resultMap>
+
+    <select id="fandTime" parameterType="com.funi.platform.edg.query.TimeQuery" resultMap="timeResultMap">
+        SELECT
+        to_char(last_date,'yyyy-mm-dd') as last_date,
+        to_char(default_date,'yyyy-mm-dd') as default_date,
+        default_y,
+        default_m,
+        default_d
+        FROM edg_para_date
+        WHERE page_code=#{page_code}
+    </select>
+
+    <select id="findDICT" parameterType="java.lang.String" resultType="com.funi.platform.edg.bo.Dict">
+        SELECT name,code FROM EDG_PARAMETER_DICT WHERE parameter_type=#{str} and IF_SHOW=1
+    </select>
+
+    <select id="findRegion" parameterType="java.lang.String" resultType="java.util.HashMap">
+        SELECT name,code FROM EDG_PARAMETER_DICT WHERE parameter_type=#{str} and IF_SHOW=1
+    </select>
+
+    <select id="findDistinctRole" resultType="java.util.HashMap">
+        select DISTINCT role_name rolename,ROLE_ID roleid from EDG_ROLE
+    </select>
+
+    <select id="queryRegion4user" parameterType="java.lang.String" resultType="com.funi.platform.edg.bo.Dict">
+        select t.region_code as code,t.region_name as name from edg_user t where t.uuid=#{uuid}
+    </select>
+
+</mapper>

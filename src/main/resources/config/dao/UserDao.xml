@@ -1,0 +1,218 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.funi.platform.edg.dao.UserDao">
+
+    <!-- 分页sql -->
+    <sql id="header">
+        select * from (select com.*,ROWNUM row_num from (
+    </sql>
+    <sql id="footer">
+        ) com where ROWNUM &lt;=#{end} ) where row_num &gt;=#{start}
+    </sql>
+
+    <select id="getUserList" resultType="com.funi.platform.edg.bo.UserVo" parameterType="com.funi.platform.edg.bo.UserVo">
+        <include refid="header"/>
+        select
+            uuid,LOGIN_NAME loginname,name,tel,REGION_CODE regioncode,REGION_NAME regionname,
+            ROLE_CODE rolecode,ROLE_NAME rolename,ID_NUM idnum,UNIT,PHONE,TO_CHAR(indate,'yyyy-mm-dd') createtime,status
+        from EDG.EDG_USER
+        where 1=1
+        <if test="regionList != null">
+            and region_code in
+            <foreach collection="regionList" item="item" index="index"
+                     open="(" close=")" separator=",">
+                #{item}
+            </foreach>
+        </if>
+        <if test="rolecode != null">
+            and role_code = #{rolecode}
+        </if>
+        <if test="name != null">
+            and name like '%'||#{name}||'%'
+        </if>
+        <if test="loginname != null">
+            and login_name like '%'||#{loginname}||'%'
+        </if>
+        <if test="starttime != null">
+            and indate &gt;= to_date(#{starttime}||' 00:00:00','yyyy-mm-dd hh24:mi:ss')
+        </if>
+        <if test="endtime != null">
+            and indate &lt;= to_date(#{endtime}||' 23:59:59','yyyy-mm-dd hh24:mi:ss')
+        </if>
+        order by status desc,indate desc
+        <include refid="footer"/>
+    </select>
+
+    <select id="getUserListCount" resultType="java.lang.Integer" parameterType="com.funi.platform.edg.bo.UserVo">
+        select
+        count(1)
+        from EDG.EDG_USER
+        where 1=1
+        <if test="regionList != null">
+            and region_code in
+            <foreach collection="regionList" item="item" index="index"
+                     open="(" close=")" separator=",">
+                #{item}
+            </foreach>
+        </if>
+        <if test="rolecode != null">
+            and role_code = #{rolecode}
+        </if>
+        <if test="name != null">
+            and name like '%'||#{name}||'%'
+        </if>
+        <if test="loginname != null">
+            and login_name like '%'||#{loginname}||'%'
+        </if>
+        <if test="starttime != null">
+            and indate &gt;= to_date(#{starttime}||' 00:00:00','yyyy-mm-dd hh24:mi:ss')
+        </if>
+        <if test="endtime != null">
+            and indate &lt;= to_date(#{endtime}||' 23:59:59','yyyy-mm-dd hh24:mi:ss')
+        </if>
+    </select>
+
+    <select id="getUserInfo" resultType="com.funi.platform.edg.bo.UserVo" parameterType="java.lang.String">
+        select uuid,LOGIN_NAME loginname,name,tel,REGION_CODE regioncode,REGION_NAME regionname,login_pass loginpass,
+            ROLE_CODE rolecode,ROLE_NAME rolename,ID_NUM idnum,UNIT,PHONE,TO_CHAR(indate,'yyyy-mm-dd') createtime,status,sessionid
+        from EDG.EDG_USER where uuid = #{uuid}
+    </select>
+
+    <update id="updateUser" parameterType="com.funi.platform.edg.bo.UserVo">
+        update EDG.EDG_USER SET
+            editdate = sysdate,ID_NUM = #{idnum},LOGIN_NAME = #{loginname}
+            ,LOGIN_PASS = #{loginpass},REGION_CODE = #{regioncode},REGION_NAME = #{regionname}
+            ,ROLE_CODE = #{rolecode},ROLE_NAME = #{rolename},NAME = #{name}
+            ,UNIT = #{unit},tel = #{tel},phone=#{phone}
+        where uuid = #{uuid}
+    </update>
+
+    <update id="fastEditUser" parameterType="com.funi.platform.edg.bo.UserVo">
+        update EDG.EDG_USER SET
+        editdate = sysdate,LOGIN_PASS = #{loginpass},tel = #{tel},phone=#{phone}
+        where uuid = #{uuid}
+    </update>
+
+    <update id="deleteUser" parameterType="java.util.List">
+        update EDG.EDG_USER SET STATUS=0 where uuid in
+        <foreach collection="list" index="index" item="uuid" open="(" separator="," close=")">
+            #{uuid}
+        </foreach>
+    </update>
+
+    <insert id="insertUser" parameterType="com.funi.platform.edg.bo.UserVo">
+        INSERT INTO EDG.EDG_USER (UUID,LOGIN_NAME,LOGIN_PASS,NAME,TEL,REGION_CODE,REGION_NAME,ROLE_CODE,ROLE_NAME,ID_NUM, UNIT,PHONE)
+        VALUES
+            (
+                #{uuid},
+                #{loginname},
+                #{loginpass},
+                #{name},
+                #{tel},
+                #{regioncode},
+                #{regionname},
+                #{rolecode},
+                #{rolename},
+                #{idnum},
+                #{unit},
+                #{phone}
+            )
+    </insert>
+
+
+    <select id="findOldPasswordMD5" resultType="java.lang.String" parameterType="java.lang.String">
+        select login_pass from EDG.EDG_USER where uuid = #{uuid}
+    </select>
+
+    <update id="fastEditPass4Date" parameterType="java.util.HashMap">
+        update EDG.EDG_USER SET
+        editdate = sysdate,LOGIN_PASS = #{passwordMD5}
+        where uuid = #{uuid}
+    </update>
+
+    <update id="updateUnique" parameterType="com.funi.platform.edg.bo.UserVo" >
+         update EDG.EDG_USER SET
+         SESSIONID= #{sessionId}
+         where uuid=#{uuid}
+    </update>
+
+    <select id="getEtlField" parameterType="com.funi.platform.edg.bo.UserVo" resultType="com.funi.platform.edg.bo.FieldVo">
+        <include refid="header"/>
+        select fid AS ID,
+        case when data_soruce='郫县' then '郫都区' when data_soruce='双流县' then '双流区' else data_soruce end AS region,
+        fno fno_new,
+        faddress,
+        ftradetype,
+        fowner,
+        faprice_mu,
+        fabprice,
+        fbprice_mu,
+        fbbprice,
+        ftrprice_mu,
+        ftrbprice,
+        famount,
+        TO_CHAR (ftrtime, 'yyyy-mm-dd') AS ftrtime,
+        ffarea,
+        fusage_id,
+        fusage_name,
+        fusage_type,
+        fplanusg,
+        fbtarea,
+        fbtarea_up,
+        fbtarea_down,
+        fhouse,
+        fhouse_up,
+        fhouse_down,
+        fbusiness,
+        fbusiness_up,
+        fbusiness_down,
+        fbself_up,
+        fbself_down,
+        fbuse_up,
+        fbuse_down,
+        frate_up,
+       frate_dow,
+        fctrno fctrno_new,
+        ffileno,
+        TO_CHAR (create_time, 'yyyy-mm-dd') create_time,
+        TO_CHAR (update_time, 'yyyy-mm-dd') update_time,
+        TO_CHAR (delete_time, 'yyyy-mm-dd') delete_time,
+        file_status,
+        deleted from edg.edg_field_b@dl_zjk_edg
+        where 1=1
+        <if test="regionList != null">
+            and data_source in
+            <foreach collection="regionList" item="item" index="index"
+                     open="(" close=")" separator=",">
+                #{item}
+            </foreach>
+        </if>
+        <if test="starttime != null">
+            and create_time &gt;= to_date(#{starttime}||' 00:00:00','yyyy-mm-dd hh24:mi:ss')
+        </if>
+        <if test="endtime != null">
+            and create_time &lt;= to_date(#{endtime}||' 23:59:59','yyyy-mm-dd hh24:mi:ss')
+        </if>
+        order by create_time  DESC
+        <include refid="footer"/>
+    </select>
+
+    <select id="getEtlFieldCount" parameterType="com.funi.platform.edg.bo.UserVo" resultType="java.lang.Integer">
+        select count(*) FROM   edg.edg_field_b@dl_zjk_edg   where 1=1
+        <if test="regionList != null">
+            and data_source in
+            <foreach collection="regionList" item="item" index="index"
+                     open="(" close=")" separator=",">
+                #{item}
+            </foreach>
+        </if>
+        <if test="starttime != null">
+            and create_time &gt;= to_date(#{starttime}||' 00:00:00','yyyy-mm-dd hh24:mi:ss')
+        </if>
+        <if test="endtime != null">
+            and create_time &lt;= to_date(#{endtime}||' 23:59:59','yyyy-mm-dd hh24:mi:ss')
+        </if>
+    </select>
+</mapper>

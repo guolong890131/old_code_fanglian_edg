@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.funi.platform.edg.dao.UploadCompletedExcelDao">
+
+    <!--插入失败原因-->
+    <insert id="insertErr" parameterType="java.util.HashMap">
+        INSERT INTO edg.edg_completed_b_imp
+        (completed_no,import_state,inputer_id)
+        VALUES
+        (#{completed_no},#{import_state},#{inputer_id})
+    </insert>
+
+    <!--清空导入临时表-->
+    <delete id="cleanCompleted_E_IMP" parameterType="java.lang.String">
+        delete from
+        edg.edg_completed_b_extend_imp  t
+        where t.XH in
+        (
+        select XH
+        from edg.edg_layout_b_imp
+        where inputer_id=#{uuid}
+        )
+    </delete>
+    <delete id="cleanCompletedIMP" parameterType="java.lang.String">
+        delete from edg.edg_completed_b_imp t where inputer_id=#{uuid}
+    </delete>
+
+
+    <select id="checkCompleted" parameterType="com.funi.platform.edg.bo.Completed" resultType="java.lang.Integer">
+        select count(1) from(
+        select * from edg.edg_completed_b_imp t where upper(t.completed_no) = upper(#{completed_no}) and t.inputer_id=#{inputer_id}
+        )temp
+    </select>
+
+
+    <select id="checkCompleted4Layout_no" parameterType="java.lang.String" resultType="java.lang.Integer">
+        select count(1) from(
+        select DISTINCT a.layout_no as name
+        from edg.edg_layout_b_extend a
+        INNER JOIN edg.edg_layout_b b on a.xh = b.XH
+        where b.FILE_STATUS = 1
+        and a.layout_no is not null
+        AND upper(a.layout_no) = upper(#{layout_no})
+        )temp
+    </select>
+    <select id="checkCompleted4Build_no" parameterType="java.lang.String" resultType="java.lang.Integer">
+        select count(1) from(
+        SELECT DISTINCT e.build_no as name
+        FROM edg.edg_build_b_extend e
+        INNER JOIN edg.edg_build_b b on e.xh=b.xh
+        WHERE b.FILE_STATUS=1
+        and e.build_no is not null
+        AND upper(e.build_no) = upper(#{build_no})
+        )temp
+    </select>
+
+
+
+    <!--导入临时表-->
+    <insert id="insertCompletedExc" parameterType="com.funi.platform.edg.bo.Completed">
+        INSERT INTO edg.edg_completed_b_imp
+        (xh,region_code,completed_no,layout_no,address,build_no,completed_date,completed_scale,j1,j2,j3,j4,j5,construction_unit,build_name,import_state,inputer_id)
+        VALUES
+        (#{xh},#{region_code},#{completed_no},#{layout_no},#{address},#{build_no},to_date(#{completed_date},'yyyy-mm-dd'),#{completed_scale},#{j1},#{j2},#{j3},#{j4},#{j5},#{construction_unit},#{build_name},#{import_state},#{inputer_id})
+    </insert>
+    <insert id="insertCompletedExc_E" parameterType="java.util.HashMap">
+        INSERT INTO edg.edg_completed_b_extend_imp
+        (xh,data_source,completed_no,build_no,layout_no)
+        VALUES
+        (#{xh},#{region_code},#{completed_no},#{build_no},#{layout_no})
+    </insert>
+
+
+
+    <!--查询导入临时表结果-->
+    <select id="queryCompletedIMP" parameterType="java.util.HashMap" resultType="com.funi.platform.edg.bo.Completed">
+        <![CDATA[
+            select * from (
+            select n.*,rownum num from (
+        ]]>
+        select
+        t.completed_no,
+        t.import_state
+        from edg.edg_completed_b_imp t
+        where t.inputer_id=#{uuid}
+        <![CDATA[
+            order by t.import_state desc
+			) n where rownum<=#{end}) where num>#{start}
+        ]]>
+    </select>
+    <select id="queryCompletedIMPTotal" parameterType="java.util.HashMap" resultType="java.lang.Long">
+        select count(1) from(
+        select
+        t.completed_no,
+        t.import_state
+        from edg.edg_completed_b_imp t
+        where t.inputer_id=#{uuid}
+        )temp
+    </select>
+
+
+
+    <select id="checkNum" parameterType="java.lang.String" resultType="java.lang.Integer">
+        select count(1) from(
+        select * from edg.edg_completed_b_imp t where t.import_state='1' and t.inputer_id=#{uuid}
+        )temp
+    </select>
+
+
+    <!--查询所有导入成功数据-->
+    <select id="queryCompletedIMPAll" parameterType="java.lang.String" resultType="com.funi.platform.edg.bo.Completed">
+       select
+        t.xh,
+        t.region_code,
+        t.completed_no,
+        t.layout_no,
+        t.build_no,
+        to_char(t.completed_date,'yyyy-mm-dd') as completed_date,
+        t.completed_scale,
+        t.construction_unit,
+        t.address,
+        t.build_name,
+        t.j1,
+        t.j2,
+        t.j3,
+        t.j4,
+        t.j5,
+        t.inputer_id
+        from edg.edg_completed_b_imp t
+        where t.import_state='1' and t.inputer_id=#{uuid}
+    </select>
+    <!--查询所有导入成功数据的关系-->
+    <select id="queryCompletedIMPAll_E" parameterType="java.lang.String" resultType="com.funi.platform.edg.bo.Completed">
+        select p.xh,p.data_source,p.completed_no,p.build_no,p.layout_no
+        from edg.edg_completed_b_extend_imp p
+        inner join edg.edg_completed_b_imp t on p.xh=t.xh
+        where t.import_state='1' and t.inputer_id=#{uuid}
+    </select>
+
+
+    <!--插入数据到正式表-->
+    <insert id="insertCompleted" parameterType="java.util.List">
+        INSERT INTO edg.edg_completed_b
+        (xh,region_code,completed_no,layout_no,address,build_no,completed_date,completed_scale,j1,j2,j3,j4,j5,construction_unit,build_name,inputer_id)
+        <foreach collection="list" item="item" index="index" separator="union all" >
+        (select #{item.xh},#{item.region_code},#{item.completed_no},#{item.layout_no},#{item.address},#{item.build_no},to_date(#{item.completed_date},'yyyy-mm-dd'),#{item.completed_scale},#{item.j1},#{item.j2},#{item.j3},#{item.j4},#{item.j5},#{item.construction_unit},#{item.build_name},#{item.inputer_id} from dual)
+        </foreach>
+    </insert>
+    <!--插入关系到正式关系表-->
+    <insert id="insertCompleted_E" parameterType="java.util.List">
+        INSERT INTO edg.edg_completed_b_extend
+        (xh,data_source,completed_no,build_no,layout_no)
+        <foreach collection="list" item="item" index="index" separator="union all" >
+        (select #{item.xh},#{item.data_source},#{item.completed_no},#{item.build_no},#{item.layout_no}  from dual)
+        </foreach>
+    </insert>
+</mapper>
